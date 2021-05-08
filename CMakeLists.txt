@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 project(suloea)
-set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# External configuration CMake scripts
+set (CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include (SuloeaConfig)
+
 set(AEOLUS_DIR third_party/aeolus-0.9.9)
 
 find_package(Freetype REQUIRED)
@@ -47,3 +51,37 @@ target_link_libraries(aeolus PRIVATE zita-alsa-pcmi clthreads dl ALSA::ALSA Thre
 
 target_compile_definitions(aeolus PRIVATE VERSION="\\"0.9.9\\"")
 target_compile_definitions(aeolus PRIVATE LIBDIR=".")
+
+
+set (LV2PLUGIN_PRJ_NAME "${PROJECT_NAME}_lv2")
+
+# Set the build directory as <build_dir>/lv2/<plugin_name>.lv2/
+set (PROJECT_BINARY_DIR "${PROJECT_BINARY_DIR}/${PROJECT_NAME}.lv2")
+
+# LV2 plugin specific settings
+include (LV2Config)
+
+add_library (${LV2PLUGIN_PRJ_NAME} MODULE lv2/suloea.c)
+
+# Explicitely strip all symbols on Linux but lv2_descriptor()
+# MacOS linker does not support this apparently https://bugs.webkit.org/show_bug.cgi?id=144555
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    file(COPY lv2/lv2.version DESTINATION ${CMAKE_BINARY_DIR})
+    target_link_libraries(${LV2PLUGIN_PRJ_NAME} "-Wl,--version-script=lv2.version")
+endif()
+if (MINGW)
+    set_target_properties (${LV2PLUGIN_PRJ_NAME} PROPERTIES LINK_FLAGS "-static")
+endif()
+
+# Remove the "lib" prefix, rename the target name and build it in the .lv build dir
+# <build_dir>/lv2/<plugin_name>_lv2.<ext> to
+# <build_dir>/lv2/<plugin_name>.lv2/<plugin_name>.<ext>
+set_target_properties (${LV2PLUGIN_PRJ_NAME} PROPERTIES PREFIX "")
+set_target_properties (${LV2PLUGIN_PRJ_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
+set_target_properties (${LV2PLUGIN_PRJ_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
+
+# Generate *.ttl files from *.in sources,
+# create the destination directory if it doesn't exists and copy needed files
+file (MAKE_DIRECTORY ${PROJECT_BINARY_DIR})
+configure_file (lv2/manifest.ttl.in ${PROJECT_BINARY_DIR}/manifest.ttl)
+configure_file (lv2/${PROJECT_NAME}.ttl.in ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.ttl)

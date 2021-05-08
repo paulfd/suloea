@@ -26,7 +26,7 @@
 #include "rngen.h"
 
 
-#define PERIOD 64
+#define PERIOD 16
 
 
 class Pipewave

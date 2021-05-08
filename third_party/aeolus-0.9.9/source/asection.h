@@ -25,7 +25,7 @@
 #include "global.h"
 
 
-#define PERIOD 64
+#define PERIOD 1024
 #define MIXLEN 64
 #define NCHANN 4
 #define NRANKS 32
