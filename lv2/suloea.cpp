@@ -41,11 +41,15 @@
 #include "lv2/log/logger.h"
 #include "lv2/log/log.h"
 
+#include "division.h"
+#include "asection.h"
+
 #include <math.h>
-#include <sfizz.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <memory>
+
 
 #define SULOEA_URI "https://github.com/paulfd/suloea"
 #define CHANNEL_MASK 0x0F
@@ -97,6 +101,9 @@ typedef struct
     LV2_URID atom_string_uri;
     LV2_URID atom_bool_uri;
 
+    std::unique_ptr<Asection> asection;
+    std::unique_ptr<Division> division;
+
     bool activated;
     int max_block_size;
     double sample_rate;
@@ -104,7 +111,7 @@ typedef struct
 
 
 static void
-prelude_map_required_uris(suloea_plugin_t* self)
+suloea_map_required_uris(suloea_plugin_t* self)
 {
     LV2_URID_Map* map = self->map;
     self->midi_event_uri = map->map(map->handle, LV2_MIDI__MidiEvent);
@@ -165,14 +172,16 @@ instantiate(const LV2_Descriptor* descriptor,
     self->sample_rate = rate;
     self->activated = false;
 
+
     // Get the features from the host and populate the structure
     for (const LV2_Feature* const* f = features; *f; f++) {
+        void *data = (**f).data;
 
         if (!strcmp((**f).URI, LV2_URID__map))
-            self->map = (**f).data;
+            self->map = (LV2_URID_Map *)data;
 
         if (!strcmp((**f).URI, LV2_URID__unmap))
-            self->unmap = (**f).data;
+            self->unmap = (LV2_URID_Unmap *)data;
 
         if (!strcmp((**f).URI, LV2_BUF_SIZE__boundedBlockLength))
             supports_bounded_block_size = true;
@@ -181,10 +190,10 @@ instantiate(const LV2_Descriptor* descriptor,
             supports_fixed_block_size = true;
 
         if (!strcmp((**f).URI, LV2_OPTIONS__options))
-            options = (**f).data;
+            options = (LV2_Options_Option *)data;
 
         if (!strcmp((**f).URI, LV2_LOG__log))
-            self->log = (**f).data;
+            self->log = (LV2_Log_Log *)data;
     }
 
     // Setup the loggers
@@ -198,7 +207,7 @@ instantiate(const LV2_Descriptor* descriptor,
     }
 
     // Map the URIs we will need
-    prelude_map_required_uris(self);
+    suloea_map_required_uris(self);
 
     // Initialize the forge
     lv2_atom_forge_init(&self->forge, self->map);
@@ -243,6 +252,9 @@ instantiate(const LV2_Descriptor* descriptor,
 
     // sfizz_set_sample_rate(self->synth, self->sample_rate);
     // sfizz_set_samples_per_block(self->synth, self->max_block_size);
+
+    self->asection.reset(new Asection(self->sample_rate));
+    self->division.reset(new Division(self->asection.get(), self->sample_rate));
 
     return (LV2_Handle)self;
 }
