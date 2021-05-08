@@ -43,14 +43,17 @@
 
 #include "division.h"
 #include "asection.h"
+#include "scales.h"
+#include "reverb.h"
 
 #include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <memory>
+#include <vector>
 
-
+#define AEOLUS_PERIOD 64
 #define SULOEA_URI "https://github.com/paulfd/suloea"
 #define CHANNEL_MASK 0x0F
 #define NOTE_ON 0x90
@@ -101,14 +104,81 @@ typedef struct
     LV2_URID atom_string_uri;
     LV2_URID atom_bool_uri;
 
+    Reverb reverb;
     std::unique_ptr<Asection> asection;
     std::unique_ptr<Division> division;
+    float W[PERIOD];
+    float X[PERIOD];
+    float Y[PERIOD];
+    float Z[PERIOD];
+    float R[PERIOD];
+    unsigned char keymap[NNOTES];
 
     bool activated;
     int max_block_size;
     double sample_rate;
+
+    void key_off (int n, int b)
+    {
+        keymap [n] &= ~b;
+        keymap [n] |= 128;
+    }
+
+    void key_on (int n, int b)
+    {
+        keymap [n] |= b | 128;
+    }
+
+    void proc_keys1(void)
+    {
+        int d, m, n;
+
+        for (n = 0; n < NNOTES; n++)
+        {
+            m = keymap[n];
+            if (m & 128)
+            {
+                m &= 127;
+                keymap[n] = m;
+                division->update(n, m);
+                // for (d = 0; d < _ndivis; d++) _divisp [d]->update (n, m);
+            }
+        }
+    }
+
+    void proc_keys2 (void)
+    {    
+        // int d;
+    
+        // for (d = 0; d < _ndivis; d++) _divisp [d]->update (keymap);
+        division->update(keymap);
+    }
 } suloea_plugin_t;
 
+struct StopDescription
+{
+    std::string filename;
+    int del;
+    char pan;
+    Addsynth synth;
+};
+
+std::vector<StopDescription> stopList {
+    {"I_principal_8.ae0", 10, 'C', {} },
+    {"I_principal_4.ae0", 14, 'R', {} },
+    {"I_octave_2.ae0", 16, 'L', {} },
+    {"I_octave_1.ae0", 19, 'R', {} },
+    {"I_quinte_513.ae0", 21, 'C', {} },
+    {"I_quinte_223.ae0", 19, 'R', {} },
+    {"tibia8.ae0", 22, 'L', {} },
+    {"celesta.ae0", 13, 'C', {} },
+    // {"flute8.ae0", 5, 'C', {} },
+    // {"flute4.ae0", 8, 'R', {} },
+    // {"flute2.ae0", 10, 'R', {} },
+    {"I_cymbel.ae0", 4, 'C', {} },
+    {"I_mixtur5fach.ae0", 18, 'L', {} },
+    {"I_trumpet.ae0", 0, 'W', {} },
+};
 
 static void
 suloea_map_required_uris(suloea_plugin_t* self)
@@ -253,9 +323,35 @@ instantiate(const LV2_Descriptor* descriptor,
     // sfizz_set_sample_rate(self->synth, self->sample_rate);
     // sfizz_set_samples_per_block(self->synth, self->max_block_size);
 
-    self->asection.reset(new Asection(self->sample_rate));
-    self->division.reset(new Division(self->asection.get(), self->sample_rate));
+    std::string stopPath { path };
+    stopPath += "/stops";
+    for (auto& stop: stopList) {
+        strcpy(stop.synth._filename, stop.filename.c_str());
+        stop.synth._pan = stop.pan;
+        stop.synth._del = stop.del;
+        stop.synth.load(stopPath.c_str());
+    }
 
+    self->asection.reset(new Asection(self->sample_rate));
+    self->asection->set_size(0.075f); // In init_audio (audio.cc)
+    self->division.reset(new Division(self->asection.get(), self->sample_rate));
+    self->reverb.init(self->sample_rate);
+
+    // Use min/max instead of the original range. Why not?
+    for (unsigned i = 0; i < stopList.size(); ++i) {
+        StopDescription& stop = stopList[i];
+        std::unique_ptr<Rankwave> wave { new Rankwave(NOTE_MIN, NOTE_MAX) };
+        wave->gen_waves(&stop.synth, self->sample_rate, 440.0f, scales[4]._data);
+        self->division->set_rank(i, wave.release(), stop.pan, stop.del);
+        // Enable the rank
+        self->division->set_rank_mask(i, 128);
+    }
+
+
+    self->division->set_div_mask(1); // This is also the value that gets entered in key on/off
+                                     // Probably used for coupling logic overall
+
+    // self->division->set_rank(0,)
     return (LV2_Handle)self;
 }
 
@@ -289,12 +385,16 @@ process_midi_event(suloea_plugin_t* self, const LV2_Atom_Event* ev)
     case LV2_MIDI_MSG_NOTE_ON:
         if (msg[2] == 0)
             goto noteoff; // 0 velocity note-ons should be forbidden but just in case...
+        self->key_on((int)msg[1] - NOTE_MIN, 1);
+        // self->division->update((int)msg[1] - NOTE_MIN, 1);
         // sfizz_send_note_on(self->synth,
         //                    (int)ev->time.frames,
         //                    (int)msg[1],
         //                    msg[2]);
         break;
     case LV2_MIDI_MSG_NOTE_OFF: noteoff:
+        self->key_off((int)msg[1] - NOTE_MIN, 1);
+        // self->division->update((int)msg[1] - NOTE_MIN, 0);
         // sfizz_send_note_off(self->synth,
         //                     (int)ev->time.frames,
         //                     (int)msg[1],
@@ -352,8 +452,41 @@ run(LV2_Handle instance, uint32_t sample_count)
         }
     }
 
+    self->proc_keys1();
+    self->proc_keys2();
+
     check_freewheeling(self);
-    // sfizz_render_block(self->synth, self->output_buffers, 2, (int)sample_count);
+
+    // Remember to set reverb parameters (see proc_synth in audio.cc)
+
+    float* out [2] { self->output_buffers[0], self->output_buffers[1] };
+    for (uint32_t k = 0; k < sample_count; k += PERIOD)
+    {
+        memset(self->W, 0, PERIOD * sizeof(float));
+        memset(self->X, 0, PERIOD * sizeof(float));
+        memset(self->Y, 0, PERIOD * sizeof(float));
+        memset(self->Z, 0, PERIOD * sizeof(float));
+        memset(self->R, 0, PERIOD * sizeof(float));
+
+        self->division->process();
+        // Volume is a default value in audio.cc init_audio() _audiopar[VOLUME]
+        self->asection->process(0.32f, self->W, self->X, self->Y, self->R);
+        self->reverb.process(PERIOD, 0.32f, self->R, self->W, self->X, self->Y, self->Z);
+        // Check proc_synth in audio.cc for the ambisonic version
+
+        for (unsigned j = 0; j < PERIOD; j++)
+        {
+            // Default value in audio.cc init_audio() _audiopar[STPOSIT], 
+            // seems like a stereo position
+            out[0][j] = 
+                self->W[j] + 0.5f * self->X[j] + self->Y[j];
+            out[1][j] =
+                self->W[j] + 0.5f * self->X[j] - self->Y[j];
+        }
+
+        out[0] += PERIOD;
+        out[1] += PERIOD;
+    } 
 }
 
 static uint32_t
