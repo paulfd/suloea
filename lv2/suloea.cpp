@@ -84,7 +84,6 @@ struct SuloeaPlugin
     LV2_Log_Log* log;
     LV2_Worker_Schedule *worker {};
 
-
     // Ports
     const LV2_Atom_Sequence* input_port;
     float *output_buffers[2];
@@ -140,37 +139,9 @@ struct SuloeaPlugin
 
     static std::unique_ptr<SuloeaPlugin> instantiate(double rate, 
         const char* path, const LV2_Feature* const* features);
-    // Logic taken from Aeolus
-    void key_off (int n, int b)
-    {
-        keymap [n] &= ~b;
-        keymap [n] |= 128;
-    }
-
-    // Logic taken from Aeolus
-    void key_on (int n, int b)
-    {
-        keymap [n] |= b | 128;
-    }
-
-    // Logic taken from Aeolus (proc_keys1())
-    // proc_keys2() is in update_stops()
-    void proc_keys()
-    {
-        int m, n;
-
-        for (n = 0; n < NNOTES; n++)
-        {
-            m = keymap[n];
-            if (m & 128)
-            {
-                m &= 127;
-                keymap[n] = m;
-                division->update(n, m);
-            }
-        }
-    }
-
+    void key_off (int n, int b);
+    void key_on (int n, int b);
+    void proc_keys();
     void retune_stops();
     void init();
     void update_stops();
@@ -178,104 +149,10 @@ struct SuloeaPlugin
     void process_midi_event(const LV2_Atom_Event* ev);
     void map_required_uris();
     void process_output(uint32_t sample_count);
-    void update_gain()
-    {
-        gain = std::pow(10.0f, volume / 20.0f);
-    }
-    void update_reverb_delay()
-    { 
-        float delay_in_seconds = reverb_delay * 1e-3f;
-        reverb.set_delay(delay_in_seconds);
-        asection->set_size(delay_in_seconds);
-    }
-    void update_reverb_time()
-    {
-        reverb.set_t60mf (reverb_time);
-        reverb.set_t60lo (reverb_time * 1.50f, 250.0f);
-        reverb.set_t60hi (reverb_time * 0.50f, 3e3f);
-    }
+    void update_gain();
+    void update_reverb_delay();
+    void update_reverb_time();
 };
-
-void SuloeaPlugin::retune_stops()
-{
-    lv2_log_note(&logger, "Scale index: %d\n", scale_index);
-    for (unsigned i = 0; i < stopList.size(); ++i) {
-        const StopDescription& stop = stopList[i];
-        Addsynth& synth = synths[i];
-        std::unique_ptr<Rankwave> wave { new Rankwave(NOTE_MIN, NOTE_MAX) };
-        wave->gen_waves(&synth, sample_rate, 440.0f, scales[scale_index]._data);
-        division->set_rank(i, wave.release(), stop.pan, stop.del);
-    }
-}
-
-void SuloeaPlugin::init()
-{
-    update_gain();
-    update_reverb_delay();
-    update_reverb_time();
-    retune_stops();
-
-    for (unsigned i = 0; i < active_stops.size(); ++i) {
-        if (active_stops[i])
-            division->set_rank_mask(i, 128); 
-        else
-            division->clr_rank_mask(i, 128); 
-    }
-}
-
-void SuloeaPlugin::update_stops()
-{
-    for (unsigned i = 0; i < active_stops.size(); ++i) {
-        if (stop_ports[i] == nullptr)
-            continue;
-
-        bool stop_status = *stop_ports[i] > 0.0f;
-        if (stop_status == active_stops[i])
-            continue;
-
-        active_stops[i] = stop_status;
-        if (stop_status)
-            division->set_rank_mask(i, 128); 
-        else
-            division->clr_rank_mask(i, 128); 
-    }
-
-    // Update playing notes
-    division->update(keymap);
-}
-
-void SuloeaPlugin::update_parameters()
-{
-    // From proc_synth() in audio.cc
-    if (std::fabs(reverb_delay - *delay_port) > 1) {
-        reverb_delay = *delay_port;
-        update_reverb_delay();
-    }
-
-    if (std::fabs(reverb_time - *time_port) > 0.1f) {
-        reverb_time = *time_port;
-        update_reverb_time();
-    }
-
-    if (std::fabs(volume - *volume_port) > 0.1f) {
-        volume = *volume_port;
-        update_gain();
-    }
-
-    if (scale_index != (int)*scale_port && !retuning) {
-        retuning = true;
-        scale_index = (int)*scale_port;
-        LV2_Atom atom;
-        atom.size = 0;
-        atom.type = retune_uri;
-        if (!(worker->schedule_work(worker->handle,
-                                         lv2_atom_total_size((LV2_Atom *)&atom),
-                                         &atom) == LV2_WORKER_SUCCESS))
-        {
-            lv2_log_error(&logger, "[suleoa] There was an issue letting the background worker retune\n");
-        }
-    }
-}
 
 void SuloeaPlugin::map_required_uris()
 {
@@ -421,6 +298,137 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
     self->reverb.init(self->sample_rate);
     self->init();
     return self;
+}
+
+void SuloeaPlugin::retune_stops()
+{
+    lv2_log_note(&logger, "Scale index: %d\n", scale_index);
+    for (unsigned i = 0; i < stopList.size(); ++i) {
+        const StopDescription& stop = stopList[i];
+        Addsynth& synth = synths[i];
+        std::unique_ptr<Rankwave> wave { new Rankwave(NOTE_MIN, NOTE_MAX) };
+        wave->gen_waves(&synth, sample_rate, 440.0f, scales[scale_index]._data);
+        division->set_rank(i, wave.release(), stop.pan, stop.del);
+    }
+}
+
+// Logic taken from Aeolus
+void SuloeaPlugin::key_off (int n, int b)
+{
+    keymap [n] &= ~b;
+    keymap [n] |= 128;
+}
+
+// Logic taken from Aeolus
+void SuloeaPlugin::key_on (int n, int b)
+{
+    keymap [n] |= b | 128;
+}
+
+// Logic taken from Aeolus (proc_keys1())
+// proc_keys2() is in update_stops()
+void SuloeaPlugin::proc_keys()
+{
+    int m, n;
+
+    for (n = 0; n < NNOTES; n++)
+    {
+        m = keymap[n];
+        if (m & 128)
+        {
+            m &= 127;
+            keymap[n] = m;
+            division->update(n, m);
+        }
+    }
+}
+
+void SuloeaPlugin::update_gain()
+{
+    gain = std::pow(10.0f, volume / 20.0f);
+}
+
+void SuloeaPlugin::update_reverb_delay()
+{ 
+    float delay_in_seconds = reverb_delay * 1e-3f;
+    reverb.set_delay(delay_in_seconds);
+    asection->set_size(delay_in_seconds);
+}
+
+void SuloeaPlugin::update_reverb_time()
+{
+    reverb.set_t60mf (reverb_time);
+    reverb.set_t60lo (reverb_time * 1.50f, 250.0f);
+    reverb.set_t60hi (reverb_time * 0.50f, 3e3f);
+}
+
+void SuloeaPlugin::init()
+{
+    update_gain();
+    update_reverb_delay();
+    update_reverb_time();
+    retune_stops();
+
+    for (unsigned i = 0; i < active_stops.size(); ++i) {
+        if (active_stops[i])
+            division->set_rank_mask(i, 128); 
+        else
+            division->clr_rank_mask(i, 128); 
+    }
+}
+
+void SuloeaPlugin::update_stops()
+{
+    for (unsigned i = 0; i < active_stops.size(); ++i) {
+        if (stop_ports[i] == nullptr)
+            continue;
+
+        bool stop_status = *stop_ports[i] > 0.0f;
+        if (stop_status == active_stops[i])
+            continue;
+
+        active_stops[i] = stop_status;
+        if (stop_status)
+            division->set_rank_mask(i, 128); 
+        else
+            division->clr_rank_mask(i, 128); 
+    }
+
+    // Update playing notes
+    division->update(keymap);
+}
+
+void SuloeaPlugin::update_parameters()
+{
+    // From proc_synth() in audio.cc
+    if (std::fabs(reverb_delay - *delay_port) > 1) {
+        reverb_delay = *delay_port;
+        update_reverb_delay();
+    }
+
+    if (std::fabs(reverb_time - *time_port) > 0.1f) {
+        reverb_time = *time_port;
+        update_reverb_time();
+    }
+
+    if (std::fabs(volume - *volume_port) > 0.1f) {
+        volume = *volume_port;
+        update_gain();
+    }
+
+    if (scale_index != (int)*scale_port && !retuning) {
+        retuning = true;
+        scale_index = (int)*scale_port;
+        LV2_Atom atom;
+        atom.size = 0;
+        atom.type = retune_uri;
+        if (!(worker->schedule_work(worker->handle,
+                                         lv2_atom_total_size((LV2_Atom *)&atom),
+                                         &atom) == LV2_WORKER_SUCCESS))
+        {
+            lv2_log_error(&logger, "[suleoa] There was an issue letting the background worker retune\n");
+        }
+    }
 }
 
 static void
@@ -609,7 +617,7 @@ lv2_set_options(LV2_Handle instance, const LV2_Options_Option* options)
                 continue;
             }
             self->sample_rate = *(float*)opt->value;
-            // sfizz_set_sample_rate(self->synth, self->sample_rate);
+            lv2_log_warning(&self->logger, "[suloea] Sample rate changed in options! FIXME: This is unsupported.\n");
         } else if (opt->key == self->nominal_block_length_uri) {
             if (opt->type != self->atom_int_uri) {
                 lv2_log_warning(&self->logger, "Got a nominal block size but the type was wrong\n");
