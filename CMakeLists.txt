@@ -28,6 +28,7 @@ add_library (${LV2PLUGIN_PRJ_NAME} MODULE
     ${AEOLUS_DIR}/source/exp2ap.cc
 )
 target_include_directories(${LV2PLUGIN_PRJ_NAME} PRIVATE ${AEOLUS_DIR}/source)
+target_include_directories(${LV2PLUGIN_PRJ_NAME} PRIVATE third_party/)
 
 # Explicitely strip all symbols on Linux but lv2_descriptor()
 # MacOS linker does not support this apparently https://bugs.webkit.org/show_bug.cgi?id=144555

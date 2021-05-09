@@ -47,30 +47,19 @@
 #include "reverb.h"
 #include "stops.h"
 
-#include <math.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <string>
 #include <memory>
 #include <vector>
 
-#define AEOLUS_PERIOD 64
 #define SULOEA_URI "https://github.com/paulfd/suloea"
-#define CHANNEL_MASK 0x0F
-#define NOTE_ON 0x90
-#define NOTE_OFF 0x80
-#define MIDI_CHANNEL(byte) (byte & CHANNEL_MASK)
-#define MIDI_STATUS(byte) (byte & ~CHANNEL_MASK)
 #define MAX_BLOCK_SIZE 8192
-#define MAX_PATH_SIZE 1024
-#define NUM_VOICES 256
 #define UNUSED(x) (void)(x)
 
 enum {
     INPUT_PORT = 0,
     LEFT_BUFFER,
     RIGHT_BUFFER,
-    FREEWHEEL_PORT,
     VOLUME_PORT,
     DELAY_PORT,
     TIME_PORT,
@@ -89,7 +78,6 @@ struct SuloeaPlugin
     // Ports
     const LV2_Atom_Sequence* input_port;
     float *output_buffers[2];
-    const float *freewheel_port;
     const float *volume_port;
     const float *delay_port;
     const float *time_port;
@@ -173,7 +161,6 @@ struct SuloeaPlugin
     void update_stops();
     void update_parameters();
     void process_midi_event(const LV2_Atom_Event* ev);
-    void check_freewheeling();
     void map_required_uris();
     void process_output(uint32_t sample_count);
 };
@@ -202,21 +189,21 @@ void SuloeaPlugin::update_stops()
 void SuloeaPlugin::update_parameters()
 {
     // From proc_synth() in audio.cc
-    if (fabs(reverb_delay - *delay_port) > 1) {
+    if (std::fabs(reverb_delay - *delay_port) > 1) {
         reverb_delay = *delay_port;
         float delay_in_seconds = reverb_delay * 1e-3f;
         reverb.set_delay(delay_in_seconds);
         asection->set_size(delay_in_seconds);
     }
 
-    if (fabsf (reverb_time - *time_port) > 0.1f) {
+    if (std::fabs(reverb_time - *time_port) > 0.1f) {
         reverb_time = *time_port;
         reverb.set_t60mf (reverb_time);
         reverb.set_t60lo (reverb_time * 1.50f, 250.0f);
         reverb.set_t60hi (reverb_time * 0.50f, 3e3f);
     }
 
-    if (fabsf(volume - *volume_port) > 0.1f) {
+    if (std::fabs(volume - *volume_port) > 0.1f) {
         volume = *volume_port;
         gain = std::pow(10.0, volume / 20.0f);
     }
@@ -383,9 +370,6 @@ connect_port(LV2_Handle instance,
     case RIGHT_BUFFER:
         self->output_buffers[1] = (float *)data;
         break;
-    case FREEWHEEL_PORT:
-        self->freewheel_port = (const float *)data;
-        break;
     case VOLUME_PORT:
         self->volume_port = (const float *)data;
         break;
@@ -464,18 +448,6 @@ void SuloeaPlugin::process_midi_event(const LV2_Atom_Event* ev)
     }
 }
 
-void SuloeaPlugin::check_freewheeling()
-{
-    if (*freewheel_port > 0)
-    {
-        // NOOP
-    }
-    else
-    {
-        // NOOP
-    }
-}
-
 void SuloeaPlugin::process_output(uint32_t sample_count)
 {
     // Remember to set reverb parameters (see proc_synth in audio.cc)
@@ -541,7 +513,6 @@ run(LV2_Handle instance, uint32_t sample_count)
     self->update_parameters();
     self->proc_keys();
     self->update_stops();
-    self->check_freewheeling();
     self->process_output(sample_count);
 }
 

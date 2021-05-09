@@ -54,18 +54,6 @@
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
 		lv2:index 3 ;
-		lv2:symbol "freewheeling" ;
-		lv2:name "Freewheeling",
-		"En roue libre (freewheeling)"@fr ,
-		"A Ruota Libera"@it ;
-		lv2:designation lv2:freeWheeling ;
-		lv2:portProperty lv2:toggled ;
-		lv2:default 0 ;
-		lv2:minimum 0 ;
-		lv2:maximum 1 ;
-	] , [
-		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 4 ;
 		lv2:symbol "volume" ;
 		lv2:name "Volume" ;
 		lv2:default -10 ;
@@ -73,7 +61,7 @@
 		lv2:maximum 0 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 5 ;
+		lv2:index 4 ;
 		lv2:symbol "reverb_delay" ;
 		lv2:name "Reverb Delay" ;
 		lv2:default 75 ;
@@ -81,7 +69,7 @@
 		lv2:maximum 150 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 6 ;
+		lv2:index 5 ;
 		lv2:symbol "reverb_time" ;
 		lv2:name "Reverb Time" ;
 		lv2:default 4 ;
@@ -89,7 +77,7 @@
 		lv2:maximum 7 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 7 ;
+		lv2:index 6 ;
 		lv2:symbol "Position" ;
 		lv2:name "Position" ;
 		lv2:default 0.5 ;
@@ -97,7 +85,7 @@
 		lv2:maximum 1.0 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 8 ;
+		lv2:index 7 ;
 		lv2:symbol "temperament" ;
 		lv2:name "Temperament" ;
 		lv2:portProperty pprop:notAutomatic ;
@@ -153,7 +141,7 @@
 		]
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 9 ;
+		lv2:index 8 ;
 		lv2:symbol "bourdon16" ;
 		lv2:name "Bourdon 16" ;
 		lv2:portProperty lv2:toggled ;
@@ -162,7 +150,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 10 ;
+		lv2:index 9 ;
 		lv2:symbol "flute8" ;
 		lv2:name "Flute 8" ;
 		lv2:portProperty lv2:toggled ;
@@ -171,7 +159,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 11 ;
+		lv2:index 10 ;
 		lv2:symbol "principal8" ;
 		lv2:name "Principal 8" ;
 		lv2:portProperty lv2:toggled ;
@@ -180,7 +168,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 12 ;
+		lv2:index 11 ;
 		lv2:symbol "flute4" ;
 		lv2:name "Flute 4" ;
 		lv2:portProperty lv2:toggled ;
@@ -189,7 +177,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 13 ;
+		lv2:index 12 ;
 		lv2:symbol "principal4" ;
 		lv2:name "Principal 4" ;
 		lv2:portProperty lv2:toggled ;
@@ -198,7 +186,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 14 ;
+		lv2:index 13 ;
 		lv2:symbol "flute2" ;
 		lv2:name "Flute 2" ;
 		lv2:portProperty lv2:toggled ;
@@ -207,7 +195,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 15 ;
+		lv2:index 14 ;
 		lv2:symbol "octave2" ;
 		lv2:name "Octave 2" ;
 		lv2:portProperty lv2:toggled ;
@@ -216,7 +204,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 16 ;
+		lv2:index 15 ;
 		lv2:symbol "octave1" ;
 		lv2:name "Octave 1" ;
 		lv2:portProperty lv2:toggled ;
@@ -225,7 +213,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 17 ;
+		lv2:index 16 ;
 		lv2:symbol "quinte" ;
 		lv2:name "Quinte" ;
 		lv2:portProperty lv2:toggled ;
@@ -234,7 +222,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 18 ;
+		lv2:index 17 ;
 		lv2:symbol "tibia8" ;
 		lv2:name "Tibia 8" ;
 		lv2:portProperty lv2:toggled ;
@@ -243,7 +231,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 19 ;
+		lv2:index 18 ;
 		lv2:symbol "celesta" ;
 		lv2:name "Celesta" ;
 		lv2:portProperty lv2:toggled ;
@@ -252,7 +240,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 20 ;
+		lv2:index 19 ;
 		lv2:symbol "cymbal" ;
 		lv2:name "Cymbal" ;
 		lv2:portProperty lv2:toggled ;
@@ -261,7 +249,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 21 ;
+		lv2:index 20 ;
 		lv2:symbol "mixture" ;
 		lv2:name "Mixtur" ;
 		lv2:portProperty lv2:toggled ;
@@ -270,7 +258,7 @@
 		lv2:maximum 1 ;
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
-		lv2:index 22 ;
+		lv2:index 21 ;
 		lv2:symbol "trumpet" ;
 		lv2:name "Trumpet" ;
 		lv2:portProperty lv2:toggled ;
