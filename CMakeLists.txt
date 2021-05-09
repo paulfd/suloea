@@ -52,7 +52,7 @@ endif()
 # <build_dir>/lv2/<plugin_name>.lv2/<plugin_name>.<ext>
 set_target_properties (${LV2PLUGIN_PRJ_NAME} PROPERTIES PREFIX "")
 set_target_properties (${LV2PLUGIN_PRJ_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
-set_target_properties (${LV2PLUGIN_PRJ_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
+set_target_properties (${LV2PLUGIN_PRJ_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/$<0:>")
 
 # Generate *.ttl files from *.in sources,
 # create the destination directory if it doesn't exists and copy needed files
