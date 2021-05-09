@@ -99,4 +99,4 @@ jobs:
         run: |
             wget -q https://github.com/TheAssassin/pyuploadtool/releases/download/continuous/pyuploadtool-x86_64.AppImage
             chmod +x pyuploadtool-x86_64.AppImage
-            ./pyuploadtool-x86_64.AppImage **/suloea-win-x64.zip **/suloea-linux-x64.tar.gz
+            ./pyuploadtool-x86_64.AppImage suloea-win-x64.zip suloea-linux-x64.tar.gz
