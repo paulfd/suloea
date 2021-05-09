@@ -79,7 +79,7 @@
 	] , [
 		a lv2:InputPort, lv2:ControlPort ;
 		lv2:index 6 ;
-		lv2:symbol "Position" ;
+		lv2:symbol "position" ;
 		lv2:name "Position" ;
 		lv2:default 0.5 ;
 		lv2:minimum -1.0 ;

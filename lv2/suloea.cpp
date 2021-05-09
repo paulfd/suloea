@@ -57,6 +57,13 @@
 #define MAX_BLOCK_SIZE 8192
 #define UNUSED(x) (void)(x)
 
+namespace Default {
+    constexpr float volume { -10.0f };
+    constexpr float reverb_time { 4.0f };
+    constexpr float reverb_delay { 50.0f };
+    constexpr int scale_index { 4 };
+}
+
 enum {
     INPUT_PORT = 0,
     LEFT_BUFFER,
@@ -124,11 +131,11 @@ struct SuloeaPlugin
     bool retuning { false };
     int max_block_size;
     double sample_rate;
-    float reverb_time { 75.0f };
-    float reverb_delay { 4.0f };
-    float volume { -10.0f };
-    float gain { 0.32f };
-    int scale_index { 4 };
+    float reverb_time { Default::reverb_time };
+    float reverb_delay { Default::reverb_delay };
+    float volume { Default::volume };
+    int scale_index { Default::scale_index };
+    float gain;
     std::vector<bool> active_stops;
 
     static std::unique_ptr<SuloeaPlugin> instantiate(double rate, 
@@ -163,12 +170,58 @@ struct SuloeaPlugin
             }
         }
     }
+
+    void retune_stops();
+    void init();
     void update_stops();
     void update_parameters();
     void process_midi_event(const LV2_Atom_Event* ev);
     void map_required_uris();
     void process_output(uint32_t sample_count);
+    void update_gain()
+    {
+        gain = std::pow(10.0f, volume / 20.0f);
+    }
+    void update_reverb_delay()
+    { 
+        float delay_in_seconds = reverb_delay * 1e-3f;
+        reverb.set_delay(delay_in_seconds);
+        asection->set_size(delay_in_seconds);
+    }
+    void update_reverb_time()
+    {
+        reverb.set_t60mf (reverb_time);
+        reverb.set_t60lo (reverb_time * 1.50f, 250.0f);
+        reverb.set_t60hi (reverb_time * 0.50f, 3e3f);
+    }
 };
+
+void SuloeaPlugin::retune_stops()
+{
+    lv2_log_note(&logger, "Scale index: %d\n", scale_index);
+    for (unsigned i = 0; i < stopList.size(); ++i) {
+        const StopDescription& stop = stopList[i];
+        Addsynth& synth = synths[i];
+        std::unique_ptr<Rankwave> wave { new Rankwave(NOTE_MIN, NOTE_MAX) };
+        wave->gen_waves(&synth, sample_rate, 440.0f, scales[scale_index]._data);
+        division->set_rank(i, wave.release(), stop.pan, stop.del);
+    }
+}
+
+void SuloeaPlugin::init()
+{
+    update_gain();
+    update_reverb_delay();
+    update_reverb_time();
+    retune_stops();
+
+    for (unsigned i = 0; i < active_stops.size(); ++i) {
+        if (active_stops[i])
+            division->set_rank_mask(i, 128); 
+        else
+            division->clr_rank_mask(i, 128); 
+    }
+}
 
 void SuloeaPlugin::update_stops()
 {
@@ -196,21 +249,17 @@ void SuloeaPlugin::update_parameters()
     // From proc_synth() in audio.cc
     if (std::fabs(reverb_delay - *delay_port) > 1) {
         reverb_delay = *delay_port;
-        float delay_in_seconds = reverb_delay * 1e-3f;
-        reverb.set_delay(delay_in_seconds);
-        asection->set_size(delay_in_seconds);
+        update_reverb_delay();
     }
 
     if (std::fabs(reverb_time - *time_port) > 0.1f) {
         reverb_time = *time_port;
-        reverb.set_t60mf (reverb_time);
-        reverb.set_t60lo (reverb_time * 1.50f, 250.0f);
-        reverb.set_t60hi (reverb_time * 0.50f, 3e3f);
+        update_reverb_time();
     }
 
     if (std::fabs(volume - *volume_port) > 0.1f) {
         volume = *volume_port;
-        gain = std::pow(10.0, volume / 20.0f);
+        update_gain();
     }
 
     if (scale_index != (int)*scale_port && !retuning) {
@@ -365,22 +414,12 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
     }
 
     self->asection.reset(new Asection(self->sample_rate));
-    self->asection->set_size(self->reverb_delay * 1e-3f); // In init_audio (audio.cc)
     self->division.reset(new Division(self->asection.get(), self->sample_rate));
-    self->reverb.init(self->sample_rate);
-
-    // Use min/max instead of the original range. Why not?
-    for (unsigned i = 0; i < stopList.size(); ++i) {
-        const StopDescription& stop = stopList[i];
-        Addsynth& synth = self->synths[i];
-        std::unique_ptr<Rankwave> wave { new Rankwave(NOTE_MIN, NOTE_MAX) };
-        wave->gen_waves(&synth, self->sample_rate, 440.0f, scales[self->scale_index]._data);
-        self->division->set_rank(i, wave.release(), stop.pan, stop.del);
-    }
-
     self->division->set_div_mask(1); // This is also the value that gets entered in key on/off
                                      // Probably used for coupling logic overall in the original
                                      // Aeolus
+    self->reverb.init(self->sample_rate);
+    self->init();
     return self;
 }
 
@@ -599,14 +638,7 @@ work(LV2_Handle instance,
 
     const LV2_Atom *atom = (const LV2_Atom *)data;
     if (atom->type == self->retune_uri) {
-        lv2_log_note(&self->logger, "[suloea] Retuning...\n");
-        for (unsigned i = 0; i < stopList.size(); ++i) {
-            const StopDescription& stop = stopList[i];
-            Addsynth& synth = self->synths[i];
-            std::unique_ptr<Rankwave> wave { new Rankwave(NOTE_MIN, NOTE_MAX) };
-            wave->gen_waves(&synth, self->sample_rate, 440.0f, scales[self->scale_index]._data);
-            self->division->set_rank(i, wave.release(), stop.pan, stop.del);
-        }
+        self->retune_stops();
         respond(handle, size, data);
     } else {
         lv2_log_error(&self->logger, "[sfizz] Got an unknown atom in work\n");
@@ -633,8 +665,7 @@ work_response(LV2_Handle instance,
 
     const LV2_Atom *atom = (const LV2_Atom *)data;
     if (atom->type == self->retune_uri) {
-        self->retuning = false; // check changes
-        lv2_log_note(&self->logger, "[suloea] Reenabling !\n");
+        self->retuning = false; 
     } else {
         lv2_log_error(&self->logger, "[sfizz] Got an unexpected atom in work response\n");
         if (self->unmap)
