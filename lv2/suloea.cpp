@@ -302,7 +302,6 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
 
 void SuloeaPlugin::retune_stops()
 {
-    lv2_log_note(&logger, "Scale index: %d\n", scale_index);
     for (unsigned i = 0; i < stopList.size(); ++i) {
         const StopDescription& stop = stopList[i];
         Addsynth& synth = synths[i];
