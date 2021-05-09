@@ -48,7 +48,7 @@ jobs:
         name: suloea-linux-x64.lv2
         path: ${{runner.workspace}}/build/suloea.lv2
 
-  build_for_win64:
+  build_for_windows:
     runs-on: windows-2019
     steps:
     - name: Set install name
@@ -78,21 +78,24 @@ jobs:
     name: Create release and upload artifacts
     needs:
       - build_for_linux
-      - build_for_win64
+      - build_for_windows
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v2
+      - name: Inspect directory
+        run: ls -alFR
+      - name: Tar linux artifact
+        shell: bash
+        run: |
+          mv suloea-linux-x64.lv2 suloea.lv2
+          tar czf suloea-linux-x64.tar.gz suloea.lv2
+          rm -rf suloea.lv2
+          mv suloea-win-x64.lv2 suloea.lv2
       - name: Rezip windows artifact
         uses: montudor/action-zip@v1
         with:
-          args: zip -r suloea-win-x64.zip suloea-win-x64.lv2
-      - name: Tar linux artifact
-        uses: montudor/action-zip@v1
-        with:
-          args: tar czf suloea-linux-x64.tar.gz suloea-linux-x64.lv2
-      - name: Inspect directory
-        run: ls -alFR
+          args: zip -r suloea-win-x64.zip suloea.lv2
       - name: Create release and upload artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
