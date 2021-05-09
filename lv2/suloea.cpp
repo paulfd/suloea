@@ -70,7 +70,12 @@ enum {
     INPUT_PORT = 0,
     LEFT_BUFFER,
     RIGHT_BUFFER,
-    FREEWHEEL_PORT
+    FREEWHEEL_PORT,
+    VOLUME_PORT,
+    DELAY_PORT,
+    TIME_PORT,
+    POSITION_PORT,
+    PORT_SENTINEL
 };
 
 struct SuloeaPlugin
@@ -84,6 +89,10 @@ struct SuloeaPlugin
     const LV2_Atom_Sequence* input_port;
     float *output_buffers[2];
     const float *freewheel_port;
+    const float *volume_port;
+    const float *delay_port;
+    const float *time_port;
+    const float *position_port;
 
     // Atom forge
     LV2_Atom_Forge forge; ///< Forge for writing atoms in run thread
@@ -119,6 +128,9 @@ struct SuloeaPlugin
     bool activated;
     int max_block_size;
     double sample_rate;
+    float reverb_time { 75.0f };
+    float reverb_delay { 4.0f };
+    int scale_index { 4 };
 
     static std::unique_ptr<SuloeaPlugin> instantiate(double rate, 
         const char* path, const LV2_Feature* const* features);
@@ -280,7 +292,7 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
     }
 
     self->asection.reset(new Asection(self->sample_rate));
-    self->asection->set_size(0.075f); // In init_audio (audio.cc)
+    self->asection->set_size(self->reverb_delay * 1e-3f); // In init_audio (audio.cc)
     self->division.reset(new Division(self->asection.get(), self->sample_rate));
     self->reverb.init(self->sample_rate);
 
@@ -289,7 +301,7 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
         const StopDescription& stop = stopList[i];
         Addsynth& synth = self->synths[i];
         std::unique_ptr<Rankwave> wave { new Rankwave(NOTE_MIN, NOTE_MAX) };
-        wave->gen_waves(&synth, self->sample_rate, 440.0f, scales[4]._data);
+        wave->gen_waves(&synth, self->sample_rate, 440.0f, scales[self->scale_index]._data);
         self->division->set_rank(i, wave.release(), stop.pan, stop.del);
         
         // Enable the rank
@@ -321,6 +333,18 @@ connect_port(LV2_Handle instance,
         break;
     case FREEWHEEL_PORT:
         self->freewheel_port = (const float *)data;
+        break;
+    case VOLUME_PORT:
+        self->volume_port = (const float *)data;
+        break;
+    case DELAY_PORT:
+        self->delay_port = (const float *)data;
+        break;
+    case TIME_PORT:
+        self->time_port = (const float *)data;
+        break;
+    case POSITION_PORT:
+        self->position_port = (const float *)data;
         break;
     default:
         break;
