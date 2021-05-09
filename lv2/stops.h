@@ -19,7 +19,7 @@ const std::vector<StopDescription> stopList {
     { "I_octave_2.ae0", 16, 'L' },
     { "I_octave_1.ae0", 19, 'R' },
     { "I_quinte_513.ae0", 21, 'C' },
-    { "I_quinte_223.ae0", 19, 'R' },
+    // { "I_quinte_223.ae0", 19, 'R' },
     { "tibia8.ae0", 22, 'L' },
     { "celesta.ae0", 13, 'C' },
     { "I_cymbel.ae0", 4, 'C' },

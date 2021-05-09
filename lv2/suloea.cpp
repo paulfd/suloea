@@ -75,6 +75,7 @@ enum {
     DELAY_PORT,
     TIME_PORT,
     POSITION_PORT,
+    SCALE_PORT,
     PORT_SENTINEL
 };
 
@@ -93,6 +94,8 @@ struct SuloeaPlugin
     const float *delay_port;
     const float *time_port;
     const float *position_port;
+    const float *scale_port;
+    std::vector<const float*> stop_ports;
 
     // Atom forge
     LV2_Atom_Forge forge; ///< Forge for writing atoms in run thread
@@ -130,7 +133,10 @@ struct SuloeaPlugin
     double sample_rate;
     float reverb_time { 75.0f };
     float reverb_delay { 4.0f };
+    float volume { -10.0f };
+    float gain { 0.32f };
     int scale_index { 4 };
+    std::vector<bool> active_stops;
 
     static std::unique_ptr<SuloeaPlugin> instantiate(double rate, 
         const char* path, const LV2_Feature* const* features);
@@ -147,7 +153,8 @@ struct SuloeaPlugin
         keymap [n] |= b | 128;
     }
 
-    // Logic taken from Aeolus (proc_keys1() and proc_keys2() combined)
+    // Logic taken from Aeolus (proc_keys1())
+    // proc_keys2() is in update_stops()
     void proc_keys()
     {
         int m, n;
@@ -162,15 +169,58 @@ struct SuloeaPlugin
                 division->update(n, m);
             }
         }
-
-        division->update(keymap);
     }
-
+    void update_stops();
+    void update_parameters();
     void process_midi_event(const LV2_Atom_Event* ev);
     void check_freewheeling();
     void map_required_uris();
     void process_output(uint32_t sample_count);
 };
+
+void SuloeaPlugin::update_stops()
+{
+    for (unsigned i = 0; i < active_stops.size(); ++i) {
+        if (stop_ports[i] == nullptr)
+            continue;
+
+        bool stop_status = *stop_ports[i] > 0.0f;
+        if (stop_status == active_stops[i])
+            continue;
+
+        active_stops[i] = stop_status;
+        if (stop_status)
+            division->set_rank_mask(i, 128); 
+        else
+            division->clr_rank_mask(i, 128); 
+    }
+
+    // Update playing notes
+    division->update(keymap);
+}
+
+void SuloeaPlugin::update_parameters()
+{
+    // From proc_synth() in audio.cc
+    if (fabs(reverb_delay - *delay_port) > 1) {
+        reverb_delay = *delay_port;
+        float delay_in_seconds = reverb_delay * 1e-3f;
+        reverb.set_delay(delay_in_seconds);
+        asection->set_size(delay_in_seconds);
+    }
+
+    if (fabsf (reverb_time - *time_port) > 0.1f) {
+        reverb_time = *time_port;
+        reverb.set_t60mf (reverb_time);
+        reverb.set_t60lo (reverb_time * 1.50f, 250.0f);
+        reverb.set_t60hi (reverb_time * 0.50f, 3e3f);
+    }
+
+    if (fabsf(volume - *volume_port) > 0.1f) {
+        volume = *volume_port;
+        gain = std::pow(10.0, volume / 20.0f);
+    }
+}
 
 void SuloeaPlugin::map_required_uris()
 {
@@ -279,6 +329,11 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
     }
 
     memset(self->keymap, 0, NNOTES * sizeof(unsigned char));
+    for (unsigned i = 0; i < stopList.size(); ++i) {
+        self->stop_ports.push_back(nullptr);
+        self->active_stops.push_back(false);
+    }
+
     self->synths.resize(stopList.size());
     std::string stopPath { path };
     stopPath += "/stops";
@@ -303,9 +358,6 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
         std::unique_ptr<Rankwave> wave { new Rankwave(NOTE_MIN, NOTE_MAX) };
         wave->gen_waves(&synth, self->sample_rate, 440.0f, scales[self->scale_index]._data);
         self->division->set_rank(i, wave.release(), stop.pan, stop.del);
-        
-        // Enable the rank
-        self->division->set_rank_mask(i, 128);
     }
 
     self->division->set_div_mask(1); // This is also the value that gets entered in key on/off
@@ -346,7 +398,17 @@ connect_port(LV2_Handle instance,
     case POSITION_PORT:
         self->position_port = (const float *)data;
         break;
-    default:
+    case SCALE_PORT:
+        self->scale_port = (const float *)data;
+        break;
+    default: // Afterwards it's a stop
+        {
+            uint32_t stop_index = port - PORT_SENTINEL;
+            if (port < self->stop_ports.size())
+                self->stop_ports[stop_index] = (const float*)data;
+            else
+                lv2_log_error(&self->logger, "Port index out of range: %d\n", port);
+        }
         break;
     }
 }
@@ -390,10 +452,12 @@ void SuloeaPlugin::process_midi_event(const LV2_Atom_Event* ev)
     case LV2_MIDI_MSG_NOTE_ON:
         if (msg[2] == 0)
             goto noteoff; // 0 velocity note-ons should be forbidden but just in case...
-        key_on((int)msg[1] - NOTE_MIN, 1);
+        if (msg[1] >= NOTE_MIN && msg[1] <= NOTE_MAX)
+            key_on((int)msg[1] - NOTE_MIN, 1);
         break;
     case LV2_MIDI_MSG_NOTE_OFF: noteoff:
-        key_off((int)msg[1] - NOTE_MIN, 1);
+        if (msg[1] >= NOTE_MIN && msg[1] <= NOTE_MAX)
+            key_off((int)msg[1] - NOTE_MIN, 1);
         break;
     default:
         break;
@@ -427,8 +491,8 @@ void SuloeaPlugin::process_output(uint32_t sample_count)
 
         division->process();
         // Volume is a default value in audio.cc init_audio() _audiopar[VOLUME]
-        asection->process(0.32f, W, X, Y, R);
-        reverb.process(PERIOD, 0.32f, R, W, X, Y, Z);
+        asection->process(gain, W, X, Y, R);
+        reverb.process(PERIOD, gain, R, W, X, Y, Z);
         // Check proc_synth in audio.cc for the ambisonic version
 
         for (unsigned j = 0; j < PERIOD; j++)
@@ -436,9 +500,9 @@ void SuloeaPlugin::process_output(uint32_t sample_count)
             // Default value in audio.cc init_audio() _audiopar[STPOSIT], 
             // seems like a stereo position
             out[0][j] = 
-                W[j] + 0.5f * X[j] + Y[j];
+                W[j] + *position_port * X[j] + Y[j];
             out[1][j] =
-                W[j] + 0.5f * X[j] - Y[j];
+                W[j] + *position_port * X[j] - Y[j];
         }
 
         out[0] += PERIOD;
@@ -474,7 +538,9 @@ run(LV2_Handle instance, uint32_t sample_count)
         }
     }
 
+    self->update_parameters();
     self->proc_keys();
+    self->update_stops();
     self->check_freewheeling();
     self->process_output(sample_count);
 }
