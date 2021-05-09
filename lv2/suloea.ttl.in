@@ -12,6 +12,7 @@
 @prefix state:   <http://lv2plug.in/ns/ext/state#> .
 @prefix pg:      <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix pprop:   <http://lv2plug.in/ns/ext/port-props#> .
+@prefix work:    <http://lv2plug.in/ns/ext/worker#> .
 
 <@LV2PLUGIN_URI@>
 	a doap:Project, lv2:Plugin ;
@@ -25,9 +26,9 @@
 	rdfs:comment "@LV2PLUGIN_COMMENT@";
 	lv2:minorVersion @LV2PLUGIN_VERSION_MINOR@ ;
 	lv2:microVersion @LV2PLUGIN_VERSION_MICRO@ ;
-	lv2:requiredFeature urid:map, bufsize:boundedBlockLength;
+	lv2:requiredFeature urid:map, bufsize:boundedBlockLength, work:schedule;
 	lv2:optionalFeature lv2:hardRTCapable, opts:options;
-	lv2:extensionData opts:interface;
+	lv2:extensionData opts:interface, work:interface;
 
 	lv2:port [
 		a lv2:InputPort, atom:AtomPort ;

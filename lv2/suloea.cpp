@@ -53,6 +53,7 @@
 #include <vector>
 
 #define SULOEA_URI "https://github.com/paulfd/suloea"
+#define SULOEA__retune SULOEA_URI ":" "retune"
 #define MAX_BLOCK_SIZE 8192
 #define UNUSED(x) (void)(x)
 
@@ -74,6 +75,8 @@ struct SuloeaPlugin
     LV2_URID_Map* map;
     LV2_URID_Unmap* unmap;
     LV2_Log_Log* log;
+    LV2_Worker_Schedule *worker {};
+
 
     // Ports
     const LV2_Atom_Sequence* input_port;
@@ -104,6 +107,7 @@ struct SuloeaPlugin
     LV2_URID atom_urid_uri;
     LV2_URID atom_string_uri;
     LV2_URID atom_bool_uri;
+    LV2_URID retune_uri;
 
     std::vector<Addsynth> synths;
     Reverb reverb;
@@ -117,6 +121,7 @@ struct SuloeaPlugin
     float R[PERIOD];
 
     bool activated;
+    bool retuning { false };
     int max_block_size;
     double sample_rate;
     float reverb_time { 75.0f };
@@ -207,6 +212,20 @@ void SuloeaPlugin::update_parameters()
         volume = *volume_port;
         gain = std::pow(10.0, volume / 20.0f);
     }
+
+    if (scale_index != (int)*scale_port && !retuning) {
+        retuning = true;
+        scale_index = (int)*scale_port;
+        LV2_Atom atom;
+        atom.size = 0;
+        atom.type = retune_uri;
+        if (!(worker->schedule_work(worker->handle,
+                                         lv2_atom_total_size((LV2_Atom *)&atom),
+                                         &atom) == LV2_WORKER_SUCCESS))
+        {
+            lv2_log_error(&logger, "[suleoa] There was an issue letting the background worker retune\n");
+        }
+    }
 }
 
 void SuloeaPlugin::map_required_uris()
@@ -220,6 +239,7 @@ void SuloeaPlugin::map_required_uris()
     atom_bool_uri = map->map(map->handle, LV2_ATOM__Bool);
     atom_string_uri = map->map(map->handle, LV2_ATOM__String);
     atom_urid_uri = map->map(map->handle, LV2_ATOM__URID);
+    retune_uri = map->map(map->handle, SULOEA__retune);
 }
 
 std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate, 
@@ -243,24 +263,28 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
     // Get the features from the host and populate the structure
     for (const LV2_Feature* const* f = features; *f; f++) {
         void *data = (**f).data;
+        const char *uri = (**f).URI;
 
-        if (!strcmp((**f).URI, LV2_URID__map))
+        if (!strcmp(uri, LV2_URID__map))
             self->map = (LV2_URID_Map *)data;
 
-        if (!strcmp((**f).URI, LV2_URID__unmap))
+        if (!strcmp(uri, LV2_URID__unmap))
             self->unmap = (LV2_URID_Unmap *)data;
 
-        if (!strcmp((**f).URI, LV2_BUF_SIZE__boundedBlockLength))
+        if (!strcmp(uri, LV2_BUF_SIZE__boundedBlockLength))
             supports_bounded_block_size = true;
 
-        if (!strcmp((**f).URI, LV2_BUF_SIZE__fixedBlockLength))
+        if (!strcmp(uri, LV2_BUF_SIZE__fixedBlockLength))
             supports_fixed_block_size = true;
 
-        if (!strcmp((**f).URI, LV2_OPTIONS__options))
+        if (!strcmp(uri, LV2_OPTIONS__options))
             options = (LV2_Options_Option *)data;
 
-        if (!strcmp((**f).URI, LV2_LOG__log))
+        if (!strcmp(uri, LV2_LOG__log))
             self->log = (LV2_Log_Log *)data;
+
+        if (!strcmp(uri, LV2_WORKER__schedule))
+            self->worker = (LV2_Worker_Schedule *)data;
     }
 
     // Setup the loggers
@@ -269,6 +293,13 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
     // The map feature is required
     if (!self->map) {
         lv2_log_error(&self->logger, "Map feature not found, aborting...\n");
+        return {};
+    }
+
+    // The worker feature is required
+    if (!self->worker)
+    {
+        lv2_log_error(&self->logger, "Worker feature not found, aborting..\n");
         return {};
     }
 
@@ -352,7 +383,6 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
                                      // Aeolus
     return self;
 }
-
 
 static void
 connect_port(LV2_Handle instance,
@@ -461,7 +491,9 @@ void SuloeaPlugin::process_output(uint32_t sample_count)
         memset(Z, 0, PERIOD * sizeof(float));
         memset(R, 0, PERIOD * sizeof(float));
 
-        division->process();
+        if (!retuning)
+            division->process();
+
         // Volume is a default value in audio.cc init_audio() _audiopar[VOLUME]
         asection->process(gain, W, X, Y, R);
         reverb.process(PERIOD, gain, R, W, X, Y, Z);
@@ -550,13 +582,82 @@ lv2_set_options(LV2_Handle instance, const LV2_Options_Option* options)
     return LV2_OPTIONS_SUCCESS;
 }
 
+// This runs in a lower priority thread
+static LV2_Worker_Status
+work(LV2_Handle instance,
+     LV2_Worker_Respond_Function respond,
+     LV2_Worker_Respond_Handle handle,
+     uint32_t size,
+     const void *data)
+{
+    UNUSED(size);
+    SuloeaPlugin *self = (SuloeaPlugin *)instance;
+    if (!data) {
+        lv2_log_error(&self->logger, "[suloea] Ignoring empty data in the worker thread\n");
+        return LV2_WORKER_ERR_UNKNOWN;
+    }
+
+    const LV2_Atom *atom = (const LV2_Atom *)data;
+    if (atom->type == self->retune_uri) {
+        lv2_log_note(&self->logger, "[suloea] Retuning...\n");
+        for (unsigned i = 0; i < stopList.size(); ++i) {
+            const StopDescription& stop = stopList[i];
+            Addsynth& synth = self->synths[i];
+            std::unique_ptr<Rankwave> wave { new Rankwave(NOTE_MIN, NOTE_MAX) };
+            wave->gen_waves(&synth, self->sample_rate, 440.0f, scales[self->scale_index]._data);
+            self->division->set_rank(i, wave.release(), stop.pan, stop.del);
+        }
+        respond(handle, size, data);
+    } else {
+        lv2_log_error(&self->logger, "[sfizz] Got an unknown atom in work\n");
+        if (self->unmap)
+            lv2_log_error(&self->logger,
+                          "URI: %s\n",
+                          self->unmap->unmap(self->unmap->handle, atom->type));
+        return LV2_WORKER_ERR_UNKNOWN;
+    }
+    return LV2_WORKER_SUCCESS;
+}
+
+// This runs in the audio thread
+static LV2_Worker_Status
+work_response(LV2_Handle instance,
+              uint32_t size,
+              const void *data)
+{
+    UNUSED(size);
+    SuloeaPlugin *self = (SuloeaPlugin *)instance;
+
+    if (!data)
+        return LV2_WORKER_ERR_UNKNOWN;
+
+    const LV2_Atom *atom = (const LV2_Atom *)data;
+    if (atom->type == self->retune_uri) {
+        self->retuning = false; // check changes
+        lv2_log_note(&self->logger, "[suloea] Reenabling !\n");
+    } else {
+        lv2_log_error(&self->logger, "[sfizz] Got an unexpected atom in work response\n");
+        if (self->unmap)
+            lv2_log_error(&self->logger,
+                          "URI: %s\n",
+                          self->unmap->unmap(self->unmap->handle, atom->type));
+        return LV2_WORKER_ERR_UNKNOWN;
+    }
+
+    return LV2_WORKER_SUCCESS;
+}
+
 static const void*
 extension_data(const char* uri)
 {
     static const LV2_Options_Interface options = { lv2_get_options, lv2_set_options };
+    static const LV2_Worker_Interface worker = { work, work_response, NULL }; 
+
     // Advertise the extensions we support
     if (!strcmp(uri, LV2_OPTIONS__interface))
         return &options;
+    else if (!strcmp(uri, LV2_WORKER__interface))
+        return &worker;
 
     return NULL;
 }
