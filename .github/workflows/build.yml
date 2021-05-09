@@ -1,0 +1,102 @@
+name: build
+
+on:
+  push:
+    branches:
+      - '*'
+
+env:
+  BUILD_TYPE: Release
+  PKG_CONFIG_PATH: Release
+
+jobs:
+  build_for_linux:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Set up dependencies
+      working-directory: ${{runner.workspace}}
+      run: |
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+        sudo apt-get update
+        sudo apt-get install \
+          gcc-9 \
+          g++-9 \
+          pkg-config 
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 60 --slave /usr/bin/g++ g++ /usr/bin/g++-9
+
+    - name: Create Build Environment
+      shell: bash
+      working-directory: ${{runner.workspace}}
+      run: cmake -E make_directory build
+    # - name: Setup tmate session
+    #   uses: mxschmitt/action-tmate@v3
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
+      run: |
+        cmake "$GITHUB_WORKSPACE" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DCMAKE_INSTALL_PREFIX=/usr
+    - name: Build
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
+      run: cmake --build . --config "$BUILD_TYPE" -j 2
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: suloea-linux-x64.lv2
+        path: ${{runner.workspace}}/build/suloea.lv2
+
+  build_for_win64:
+    runs-on: windows-2019
+    steps:
+    - name: Set install name
+      run: |
+        echo platform=x64 >> "${Env:GITHUB_ENV}"
+        echo release_arch=x64 >> "${Env:GITHUB_ENV}"
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Create Build Environment
+      working-directory: ${{runner.workspace}}
+      run: cmake -E make_directory build
+    - name: Configure CMake
+      working-directory: ${{runner.workspace}}/build
+      run: |
+       cmake "${Env:GITHUB_WORKSPACE}" -G"Visual Studio 16 2019" -A"${Env:release_arch}" -DCMAKE_BUILD_TYPE="${Env:BUILD_TYPE}"
+    - name: Build
+      working-directory: ${{runner.workspace}}/build
+      run: cmake --build . --config "${Env:BUILD_TYPE}" -j 2
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: suloea-win-x64.lv2
+        path: ${{runner.workspace}}/build/suloea.lv2
+
+  upload:
+    name: Create release and upload artifacts
+    needs:
+      - build_for_linux
+      - build_for_win64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+      - name: Rezip windows artifact
+        uses: montudor/action-zip@v1
+        with:
+          args: zip -r suloea-win-x64.zip suloea-win-x64.lv2
+      - name: Tar linux artifact
+        uses: montudor/action-zip@v1
+        with:
+          args: tar czf suloea-linux-x64.tar.gz suloea-linux-x64.lv2
+      - name: Inspect directory
+        run: ls -alFR
+      - name: Create release and upload artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+            wget -q https://github.com/TheAssassin/pyuploadtool/releases/download/continuous/pyuploadtool-x86_64.AppImage
+            chmod +x pyuploadtool-x86_64.AppImage
+            ./pyuploadtool-x86_64.AppImage **/suloea-win-x64.zip **/suloea-linux-x64.tar.gz
