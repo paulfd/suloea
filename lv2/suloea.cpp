@@ -404,7 +404,7 @@ connect_port(LV2_Handle instance,
     default: // Afterwards it's a stop
         {
             uint32_t stop_index = port - PORT_SENTINEL;
-            if (port < self->stop_ports.size())
+            if (stop_index < self->stop_ports.size())
                 self->stop_ports[stop_index] = (const float*)data;
             else
                 lv2_log_error(&self->logger, "Port index out of range: %d\n", port);
