@@ -434,6 +434,61 @@ void SuloeaPlugin::update_parameters()
     }
 }
 
+void SuloeaPlugin::process_midi_event(const LV2_Atom_Event* ev)
+{
+    const uint8_t* const msg = (const uint8_t*)(ev + 1);
+    switch (lv2_midi_message_type(msg)) {
+    case LV2_MIDI_MSG_NOTE_ON:
+        if (msg[2] == 0)
+            goto noteoff; // 0 velocity note-ons should be forbidden but just in case...
+        if (msg[1] >= NOTE_MIN && msg[1] <= NOTE_MAX)
+            key_on((int)msg[1] - NOTE_MIN, 1);
+        break;
+    case LV2_MIDI_MSG_NOTE_OFF: noteoff:
+        if (msg[1] >= NOTE_MIN && msg[1] <= NOTE_MAX)
+            key_off((int)msg[1] - NOTE_MIN, 1);
+        break;
+    default:
+        break;
+    }
+}
+
+void SuloeaPlugin::process_output(uint32_t sample_count)
+{
+    // Remember to set reverb parameters (see proc_synth in audio.cc)
+
+    float* out [2] { output_buffers[0], output_buffers[1] };
+    for (uint32_t k = 0; k < sample_count; k += PERIOD)
+    {
+        memset(W, 0, PERIOD * sizeof(float));
+        memset(X, 0, PERIOD * sizeof(float));
+        memset(Y, 0, PERIOD * sizeof(float));
+        memset(Z, 0, PERIOD * sizeof(float));
+        memset(R, 0, PERIOD * sizeof(float));
+
+        if (!retuning)
+            division->process();
+
+        // Volume is a default value in audio.cc init_audio() _audiopar[VOLUME]
+        asection->process(gain, W, X, Y, R);
+        reverb.process(PERIOD, gain, R, W, X, Y, Z);
+        // Check proc_synth in audio.cc for the ambisonic version
+
+        for (unsigned j = 0; j < PERIOD; j++)
+        {
+            // Default value in audio.cc init_audio() _audiopar[STPOSIT], 
+            // seems like a stereo position
+            out[0][j] = 
+                W[j] + *position_port * X[j] + Y[j];
+            out[1][j] =
+                W[j] + *position_port * X[j] - Y[j];
+        }
+
+        out[0] += PERIOD;
+        out[1] += PERIOD;
+    } 
+}
+
 static void
 connect_port(LV2_Handle instance,
     uint32_t port,
@@ -510,61 +565,6 @@ deactivate(LV2_Handle instance)
 {
     SuloeaPlugin* self = (SuloeaPlugin*)instance;
     self->activated = false;
-}
-
-void SuloeaPlugin::process_midi_event(const LV2_Atom_Event* ev)
-{
-    const uint8_t* const msg = (const uint8_t*)(ev + 1);
-    switch (lv2_midi_message_type(msg)) {
-    case LV2_MIDI_MSG_NOTE_ON:
-        if (msg[2] == 0)
-            goto noteoff; // 0 velocity note-ons should be forbidden but just in case...
-        if (msg[1] >= NOTE_MIN && msg[1] <= NOTE_MAX)
-            key_on((int)msg[1] - NOTE_MIN, 1);
-        break;
-    case LV2_MIDI_MSG_NOTE_OFF: noteoff:
-        if (msg[1] >= NOTE_MIN && msg[1] <= NOTE_MAX)
-            key_off((int)msg[1] - NOTE_MIN, 1);
-        break;
-    default:
-        break;
-    }
-}
-
-void SuloeaPlugin::process_output(uint32_t sample_count)
-{
-    // Remember to set reverb parameters (see proc_synth in audio.cc)
-
-    float* out [2] { output_buffers[0], output_buffers[1] };
-    for (uint32_t k = 0; k < sample_count; k += PERIOD)
-    {
-        memset(W, 0, PERIOD * sizeof(float));
-        memset(X, 0, PERIOD * sizeof(float));
-        memset(Y, 0, PERIOD * sizeof(float));
-        memset(Z, 0, PERIOD * sizeof(float));
-        memset(R, 0, PERIOD * sizeof(float));
-
-        if (!retuning)
-            division->process();
-
-        // Volume is a default value in audio.cc init_audio() _audiopar[VOLUME]
-        asection->process(gain, W, X, Y, R);
-        reverb.process(PERIOD, gain, R, W, X, Y, Z);
-        // Check proc_synth in audio.cc for the ambisonic version
-
-        for (unsigned j = 0; j < PERIOD; j++)
-        {
-            // Default value in audio.cc init_audio() _audiopar[STPOSIT], 
-            // seems like a stereo position
-            out[0][j] = 
-                W[j] + *position_port * X[j] + Y[j];
-            out[1][j] =
-                W[j] + *position_port * X[j] - Y[j];
-        }
-
-        out[0] += PERIOD;
-        out[1] += PERIOD;
-    } 
 }
 
 static void
