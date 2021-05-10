@@ -61,6 +61,7 @@ namespace Default {
     constexpr float volume { -10.0f };
     constexpr float reverb_time { 4.0f };
     constexpr float reverb_delay { 50.0f };
+    constexpr float frequency { 440.0f };
     constexpr int scale_index { 4 };
 }
 
@@ -72,6 +73,7 @@ enum {
     DELAY_PORT,
     TIME_PORT,
     POSITION_PORT,
+    FREQUENCY_PORT,
     SCALE_PORT,
     RETUNING_PORT,
     PORT_SENTINEL
@@ -93,6 +95,7 @@ struct SuloeaPlugin
     const float *time_port;
     const float *position_port;
     const float *scale_port;
+    const float *frequency_port;
     float *retuning_port;
     std::vector<const float*> stop_ports;
 
@@ -137,6 +140,7 @@ struct SuloeaPlugin
     float reverb_delay { Default::reverb_delay };
     float volume { Default::volume };
     int scale_index { Default::scale_index };
+    float frequency { Default::frequency };
     float gain;
     std::vector<bool> active_stops;
 
@@ -309,7 +313,7 @@ void SuloeaPlugin::retune_stops()
         const StopDescription& stop = stopList[i];
         Addsynth& synth = synths[i];
         std::unique_ptr<Rankwave> wave { new Rankwave(NOTE_MIN, NOTE_MAX) };
-        wave->gen_waves(&synth, sample_rate, 440.0f, scales[scale_index]._data);
+        wave->gen_waves(&synth, sample_rate, frequency, scales[scale_index]._data);
         division->set_rank(i, wave.release(), stop.pan, stop.del);
     }
 }
@@ -433,6 +437,20 @@ void SuloeaPlugin::update_parameters()
             lv2_log_error(&logger, "[suleoa] There was an issue letting the background worker retune\n");
         }
     }
+
+    if (!retuning && std::fabs(frequency - *frequency_port) > 0.05f ) {
+        retuning = true;
+        frequency = *frequency_port;
+        LV2_Atom atom;
+        atom.size = 0;
+        atom.type = retune_uri;
+        if (!(worker->schedule_work(worker->handle,
+                                         lv2_atom_total_size((LV2_Atom *)&atom),
+                                         &atom) == LV2_WORKER_SUCCESS))
+        {
+            lv2_log_error(&logger, "[suleoa] There was an issue letting the background worker retune\n");
+        }
+    }
 }
 
 void SuloeaPlugin::process_midi_event(const LV2_Atom_Event* ev)
@@ -501,6 +519,9 @@ connect_port(LV2_Handle instance,
         break;
     case SCALE_PORT:
         self->scale_port = (const float *)data;
+        break;
+    case FREQUENCY_PORT:
+        self->frequency_port = (const float *)data;
         break;
     case RETUNING_PORT:
         self->retuning_port = (float *)data;
