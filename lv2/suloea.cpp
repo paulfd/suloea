@@ -127,6 +127,7 @@ struct SuloeaPlugin
     float Y[PERIOD];
     float Z[PERIOD];
     float R[PERIOD];
+    unsigned read_idx { 0 };
 
     bool activated;
     bool retuning { false };
@@ -150,7 +151,7 @@ struct SuloeaPlugin
     void update_parameters();
     void process_midi_event(const LV2_Atom_Event* ev);
     void map_required_uris();
-    void process_output(uint32_t sample_count);
+    void process_one_period();
     void update_gain();
     void update_reverb_delay();
     void update_reverb_time();
@@ -453,40 +454,21 @@ void SuloeaPlugin::process_midi_event(const LV2_Atom_Event* ev)
     }
 }
 
-void SuloeaPlugin::process_output(uint32_t sample_count)
+void SuloeaPlugin::process_one_period()
 {
-    // Remember to set reverb parameters (see proc_synth in audio.cc)
+    memset(W, 0, PERIOD * sizeof(float));
+    memset(X, 0, PERIOD * sizeof(float));
+    memset(Y, 0, PERIOD * sizeof(float));
+    memset(Z, 0, PERIOD * sizeof(float));
+    memset(R, 0, PERIOD * sizeof(float));
 
-    float* out [2] { output_buffers[0], output_buffers[1] };
-    for (uint32_t k = 0; k < sample_count; k += PERIOD)
-    {
-        memset(W, 0, PERIOD * sizeof(float));
-        memset(X, 0, PERIOD * sizeof(float));
-        memset(Y, 0, PERIOD * sizeof(float));
-        memset(Z, 0, PERIOD * sizeof(float));
-        memset(R, 0, PERIOD * sizeof(float));
+    if (!retuning)
+        division->process();
 
-        if (!retuning)
-            division->process();
-
-        // Volume is a default value in audio.cc init_audio() _audiopar[VOLUME]
-        asection->process(gain, W, X, Y, R);
-        reverb.process(PERIOD, gain, R, W, X, Y, Z);
-        // Check proc_synth in audio.cc for the ambisonic version
-
-        for (unsigned j = 0; j < PERIOD; j++)
-        {
-            // Default value in audio.cc init_audio() _audiopar[STPOSIT], 
-            // seems like a stereo position
-            out[0][j] = 
-                W[j] + *position_port * X[j] + Y[j];
-            out[1][j] =
-                W[j] + *position_port * X[j] - Y[j];
-        }
-
-        out[0] += PERIOD;
-        out[1] += PERIOD;
-    } 
+    // Volume is a default value in audio.cc init_audio() _audiopar[VOLUME]
+    asection->process(gain, W, X, Y, R);
+    reverb.process(PERIOD, gain, R, W, X, Y, Z);
+    // Check proc_synth in audio.cc for the ambisonic version
 }
 
 static void
@@ -578,27 +560,46 @@ run(LV2_Handle instance, uint32_t sample_count)
     if (!self->input_port)
         return;
 
-    LV2_ATOM_SEQUENCE_FOREACH(self->input_port, ev)
-    {
-        // If the received atom is an object/patch message
-        if (ev->body.type == self->atom_object_uri) {
-            const LV2_Atom_Object* obj = (const LV2_Atom_Object*)&ev->body;
-            lv2_log_warning(&self->logger, "Got an Object atom but it was not supported.\n");
-            if (self->unmap)
-                lv2_log_warning(&self->logger,
-                    "Object URI: %s\n",
-                    self->unmap->unmap(self->unmap->handle, obj->body.otype));
-            continue;
-            // Got an atom that is a MIDI event
-        } else if (ev->body.type == self->midi_event_uri) {
-            self->process_midi_event(ev);
-        }
-    }
+    const LV2_Atom_Sequence* seq = self->input_port;
 
     self->update_parameters();
-    self->proc_keys();
     self->update_stops();
-    self->process_output(sample_count);
+
+    LV2_Atom_Event* ev = lv2_atom_sequence_begin(&seq->body);
+    float* out [2] { self->output_buffers[0], self->output_buffers[1] };
+    int64_t k = 0;
+
+    while (k < sample_count)
+    {
+        int64_t left_to_read = PERIOD - self->read_idx;
+        int64_t left_in_block = (int64_t)sample_count - k;
+        int64_t chunk_size = left_to_read == 0 ? 
+            std::min((int64_t) PERIOD, left_in_block) : std::min(left_to_read, left_in_block);
+        int64_t sentinel = k + chunk_size;
+
+        while (!lv2_atom_sequence_is_end(&seq->body, seq->atom.size, ev) 
+            && ev->time.frames < sentinel) {
+            if (ev->body.type == self->midi_event_uri)
+                self->process_midi_event(ev);
+
+            ev = lv2_atom_sequence_next(ev);
+        }
+
+        if (left_to_read == 0) {
+            self->proc_keys();
+            self->process_one_period();
+            self->read_idx = 0;
+        }
+        
+        unsigned& j = self->read_idx;
+        for (unsigned i = 0; i < chunk_size; ++j, ++i)
+        {
+            *out[0]++ = self->W[j] + *self->position_port * self->X[j] + self->Y[j];
+            *out[1]++ = self->W[j] + *self->position_port * self->X[j] - self->Y[j];
+        }
+
+        k += chunk_size;
+    } 
 }
 
 static uint32_t
