@@ -623,40 +623,6 @@ run(LV2_Handle instance, uint32_t sample_count)
     } 
 }
 
-static uint32_t
-lv2_get_options(LV2_Handle instance, LV2_Options_Option* options)
-{
-    UNUSED(instance);
-    UNUSED(options);
-    // We have no options
-    return LV2_OPTIONS_ERR_UNKNOWN;
-}
-
-static uint32_t
-lv2_set_options(LV2_Handle instance, const LV2_Options_Option* options)
-{
-    SuloeaPlugin* self = (SuloeaPlugin*)instance;
-
-    // Update the block size and sample rate as needed
-    for (const LV2_Options_Option* opt = options; opt->value || opt->key; ++opt) {
-        if (opt->key == self->sample_rate_uri) {
-            if (opt->type != self->atom_float_uri) {
-                lv2_log_warning(&self->logger, "Got a sample rate but the type was wrong\n");
-                continue;
-            }
-            self->sample_rate = *(float*)opt->value;
-            lv2_log_warning(&self->logger, "[suloea] Sample rate changed in options! FIXME: This is unsupported.\n");
-        } else if (opt->key == self->nominal_block_length_uri) {
-            if (opt->type != self->atom_int_uri) {
-                lv2_log_warning(&self->logger, "Got a nominal block size but the type was wrong\n");
-                continue;
-            }
-            self->max_block_size = *(int*)opt->value;
-        }
-    }
-    return LV2_OPTIONS_SUCCESS;
-}
-
 // This runs in a lower priority thread
 static LV2_Worker_Status
 work(LV2_Handle instance,
@@ -717,13 +683,10 @@ work_response(LV2_Handle instance,
 static const void*
 extension_data(const char* uri)
 {
-    static const LV2_Options_Interface options = { lv2_get_options, lv2_set_options };
     static const LV2_Worker_Interface worker = { work, work_response, NULL }; 
 
     // Advertise the extensions we support
-    if (!strcmp(uri, LV2_OPTIONS__interface))
-        return &options;
-    else if (!strcmp(uri, LV2_WORKER__interface))
+    if (!strcmp(uri, LV2_WORKER__interface))
         return &worker;
 
     return NULL;
