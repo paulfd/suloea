@@ -73,6 +73,7 @@ enum {
     TIME_PORT,
     POSITION_PORT,
     SCALE_PORT,
+    RETUNING_PORT,
     PORT_SENTINEL
 };
 
@@ -92,6 +93,7 @@ struct SuloeaPlugin
     const float *time_port;
     const float *position_port;
     const float *scale_port;
+    float *retuning_port;
     std::vector<const float*> stop_ports;
 
     // Atom forge
@@ -399,6 +401,8 @@ void SuloeaPlugin::update_stops()
 
 void SuloeaPlugin::update_parameters()
 {
+    *retuning_port = (float)retuning;
+
     // From proc_synth() in audio.cc
     if (std::fabs(reverb_delay - *delay_port) > 1) {
         reverb_delay = *delay_port;
@@ -460,6 +464,9 @@ connect_port(LV2_Handle instance,
         break;
     case SCALE_PORT:
         self->scale_port = (const float *)data;
+        break;
+    case RETUNING_PORT:
+        self->retuning_port = (float *)data;
         break;
     default: // Afterwards it's a stop
         {
