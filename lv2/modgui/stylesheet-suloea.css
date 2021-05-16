@@ -149,6 +149,31 @@
     left: 28px;
 }
 
+.suloea{{{cns}}} .suloea-retuning-led {
+    background-image:url(/resources/yellow-led.png{{{ns}}}) !important;
+    background-position: right center;
+    background-repeat: no-repeat;
+    height: 32px;
+    width: 32px;
+    bottom: 80px;
+    left: 40px;
+    margin-top: 15px;
+    position: absolute;
+    color: black;
+}
+
+.suloea{{{cns}}} .suloea-retuning-led-text {
+    left: 40px;
+    top: 4px;
+    position: absolute;
+    color: black;
+}
+
+
+.suloea{{{cns}}} .suloea-retuning-led.on {
+    background-position:left center;
+}
+
 .suloea{{{cns}}} .suloea-stop {
     background: url(/resources/stop_enabled.png{{{ns}}});
     height: 133px;
