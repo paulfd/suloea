@@ -69,14 +69,55 @@
     left: 720px;
 }
 
+.suloea{{{cns}}} .suloea-reverb-switch {
+    background-image: url(/resources/switch-key.png{{{ns}}});
+    background-position: bottom center;
+    background-repeat: no-repeat;
+    background-size: auto 132px;
+    left: 600px;
+    bottom: 160px;
+    cursor:pointer;
+    height:66px;
+    width: 66px;
+    margin: auto;
+    position: absolute !important;
+    z-index: 40;
+}
+
+.suloea{{{cns}}} .suloea-reverb-switch.off {
+    background-position-y: top !important
+}
+
+.suloea{{{cns}}} .suloea-reverb-led {
+    background-image:url(/resources/yellow-led.png{{{ns}}}) !important;
+    background-position:left center;
+    background-repeat:no-repeat;
+    overflow: hidden;
+    height:32px;
+    width:32px;
+    bottom: 180px;
+    left: 660px;
+    margin-top: 15px;
+    position: absolute;
+}
+
+.suloea{{{cns}}} .suloea-reverb-led.off {
+    background-position:right center;
+}
+
 .suloea{{{cns}}} .suloea-knob.suloea-knob-time {
     bottom: 70px;
-    left: 380px;
+    left: 370px;
 }
 
 .suloea{{{cns}}} .suloea-knob.suloea-knob-delay {
     bottom: 70px;
-    left: 500px;
+    left: 480px;
+}
+
+.suloea{{{cns}}} .suloea-knob.suloea-knob-amount {
+    bottom: 70px;
+    left: 590px;
 }
 
 .suloea{{{cns}}} .suloea-knob.suloea-knob-frequency {
