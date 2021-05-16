@@ -56,11 +56,13 @@
 #define SULOEA__retune SULOEA_URI ":" "retune"
 #define MAX_BLOCK_SIZE 8192
 #define UNUSED(x) (void)(x)
+#define ASECTION_REVERB 4 // see asection.h
 
 namespace Default {
     constexpr float volume { -10.0f };
     constexpr float reverb_time { 4.0f };
     constexpr float reverb_delay { 50.0f };
+    constexpr float reverb_amount { -10.0f };
     constexpr float frequency { 440.0f };
     constexpr int scale_index { 4 };
 }
@@ -70,8 +72,10 @@ enum {
     LEFT_BUFFER,
     RIGHT_BUFFER,
     VOLUME_PORT,
+    REVERB_PORT,
     DELAY_PORT,
     TIME_PORT,
+    REVERB_AMOUNT_PORT,
     POSITION_PORT,
     FREQUENCY_PORT,
     SCALE_PORT,
@@ -91,8 +95,10 @@ struct SuloeaPlugin
     const LV2_Atom_Sequence* input_port;
     float *output_buffers[2];
     const float *volume_port;
+    const float *reverb_port;
     const float *delay_port;
     const float *time_port;
+    const float *reverb_amount_port;
     const float *position_port;
     const float *scale_port;
     const float *frequency_port;
@@ -137,12 +143,15 @@ struct SuloeaPlugin
     bool retuning { false };
     int max_block_size;
     double sample_rate;
+    bool reverb_active { true };
     float reverb_time { Default::reverb_time };
     float reverb_delay { Default::reverb_delay };
+    float reverb_amount { Default::reverb_amount };
     float volume { Default::volume };
     int scale_index { Default::scale_index };
     float frequency { Default::frequency };
     float gain;
+    float reverb_amount_gain;
     std::vector<bool> active_stops;
 
     static std::unique_ptr<SuloeaPlugin> instantiate(double rate, 
@@ -160,6 +169,7 @@ struct SuloeaPlugin
     void update_gain();
     void update_reverb_delay();
     void update_reverb_time();
+    void update_reverb_amount();
 };
 
 void SuloeaPlugin::map_required_uris()
@@ -381,6 +391,7 @@ void SuloeaPlugin::update_reverb_time()
 void SuloeaPlugin::init()
 {
     update_gain();
+    update_reverb_amount();
     update_reverb_delay();
     update_reverb_time();
     retune_stops();
@@ -414,6 +425,16 @@ void SuloeaPlugin::update_stops()
     division->update(keymap);
 }
 
+void SuloeaPlugin::update_reverb_amount()
+{
+    Fparm* reverb_parameters = asection->get_apar();
+    if (reverb_active) {
+        reverb_parameters[ASECTION_REVERB]._val = std::pow(10.0f, reverb_amount / 10.0f);
+    } else {
+        reverb_parameters[ASECTION_REVERB]._val = 0.0f;
+    }
+}
+
 void SuloeaPlugin::update_parameters()
 {
     *retuning_port = (float)retuning;
@@ -432,6 +453,16 @@ void SuloeaPlugin::update_parameters()
     if (std::fabs(volume - *volume_port) > 0.1f) {
         volume = *volume_port;
         update_gain();
+    }
+
+    if (reverb_active != (bool)*reverb_port) {
+        reverb_active = (bool)*reverb_port;
+        update_reverb_amount();
+    }
+
+    if (std::fabs(reverb_amount - *reverb_amount_port) > 0.1f) {
+        reverb_amount = *reverb_amount_port;
+        update_reverb_amount();
     }
 
     if (scale_index != (int)*scale_port && !retuning) {
@@ -518,11 +549,17 @@ connect_port(LV2_Handle instance,
     case VOLUME_PORT:
         self->volume_port = (const float *)data;
         break;
+    case REVERB_PORT:
+        self->reverb_port = (const float *)data;
+        break;
     case DELAY_PORT:
         self->delay_port = (const float *)data;
         break;
     case TIME_PORT:
         self->time_port = (const float *)data;
+        break;
+    case REVERB_AMOUNT_PORT:
+        self->reverb_amount_port = (const float *)data;
         break;
     case POSITION_PORT:
         self->position_port = (const float *)data;
