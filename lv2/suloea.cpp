@@ -114,6 +114,7 @@ struct SuloeaPlugin
     LV2_URID sample_rate_uri;
     LV2_URID atom_object_uri;
     LV2_URID atom_float_uri;
+    LV2_URID atom_double_uri;
     LV2_URID atom_int_uri;
     LV2_URID atom_urid_uri;
     LV2_URID atom_string_uri;
@@ -168,6 +169,7 @@ void SuloeaPlugin::map_required_uris()
     nominal_block_length_uri = map->map(map->handle, LV2_BUF_SIZE__nominalBlockLength);
     sample_rate_uri = map->map(map->handle, LV2_PARAMETERS__sampleRate);
     atom_float_uri = map->map(map->handle, LV2_ATOM__Float);
+    atom_double_uri = map->map(map->handle, LV2_ATOM__Double);
     atom_int_uri = map->map(map->handle, LV2_ATOM__Int);
     atom_bool_uri = map->map(map->handle, LV2_ATOM__Bool);
     atom_string_uri = map->map(map->handle, LV2_ATOM__String);
@@ -224,8 +226,8 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
     lv2_log_logger_init(&self->logger, self->map, self->log);
 
     // The map feature is required
-    if (!self->map) {
-        lv2_log_error(&self->logger, "Map feature not found, aborting...\n");
+    if (!self->map || !self->unmap) {
+        lv2_log_error(&self->logger, "Map/unmap feature not found, aborting...\n");
         return {};
     }
 
@@ -246,11 +248,19 @@ std::unique_ptr<SuloeaPlugin> SuloeaPlugin::instantiate(double rate,
     if (options) {
         for (const LV2_Options_Option* opt = options; opt->value || opt->key; ++opt) {
             if (opt->key == self->sample_rate_uri) {
-                if (opt->type != self->atom_float_uri) {
-                    lv2_log_warning(&self->logger, "Got a sample rate but the type was wrong\n");
-                    continue;
+                if (opt->type == self->atom_float_uri) {
+                    self->sample_rate = *(float*)opt->value;
+                } else if (opt->type == self->atom_double_uri) {
+                    self->sample_rate = *(double*)opt->value;
+                } else if (opt->type == self->atom_int_uri) {
+                    // TODO : MOD host sends 1024 as int here?
+                    // self->sample_rate = (double)*(int*)opt->value;
+                    // lv2_log_warning(&self->logger, "Sample rate: %f\n", self->sample_rate);
+                } else {
+                    lv2_log_warning(&self->logger,
+                          "Got an unhandled sample rate type: %s\n",
+                          self->unmap->unmap(self->unmap->handle, opt->type));
                 }
-                self->sample_rate = *(float*)opt->value;
             } else if (opt->key == self->max_block_length_uri) {
                 if (opt->type != self->atom_int_uri) {
                     lv2_log_warning(&self->logger, "Got a max block size but the type was wrong\n");

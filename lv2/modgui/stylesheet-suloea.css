@@ -1,0 +1,146 @@
+.suloea{{{cns}}} {
+    background-image: url(/resources/background.png{{{ns}}});
+    position: absolute;
+    width: 1076px;
+    height: 390px;
+}
+
+.suloea{{{cns}}} .mod-light {
+    background-image:url(/resources/yellow-led.png{{{ns}}}) !important;
+    background-repeat:no-repeat;
+    overflow: hidden;
+    height:32px;
+    width:32px;
+    bottom: 100px;
+    right: 50px;
+    margin-top: 15px;
+    position: absolute;
+}
+
+.suloea{{{cns}}} .mod-light.on {
+    background-position:left center;
+}
+
+.suloea{{{cns}}} .mod-light.off {
+    background-position:right center;
+}
+
+.suloea{{{cns}}} .mod-footswitch {
+    background-image:url(/resources/switch-key.png{{{ns}}});
+    background-position:bottom center;
+    background-repeat:no-repeat;
+    background-size:auto 132px;
+    right: 30px;
+    bottom: 30px;
+    cursor:pointer;
+    height:66px;
+    width: 66px;
+    margin: auto;
+    position:absolute !important;
+}
+
+.suloea{{{cns}}} .mod-footswitch.on {
+    background-position-y: top !important
+}
+
+.suloea{{{cns}}} .suloea-knob {
+    background-image: url(/resources/knob_70_black_sprites.png{{{ns}}});
+    height: 100px;
+    position: absolute;
+    width: 100px;
+    z-index: 40;
+}
+
+.suloea{{{cns}}} .suloea-knob.suloea-knob-volume {
+    bottom: 100px;
+    left: 697px;
+}
+
+.suloea{{{cns}}} .suloea-stop {
+    background: url(/resources/stop_enabled.png{{{ns}}});
+    height: 133px;
+    width: 81px;
+    position: absolute ;
+    z-index: 40;
+    cursor: pointer;
+    top: 30px;
+    left: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.suloea{{{cns}}} .suloea-stop.off {
+    background: url(/resources/stop_disabled.png{{{ns}}});
+}
+
+.suloea{{{cns}}} .suloea-stop.bourdon16 {
+    top: 30px;
+    left: 30px;
+}
+
+.suloea{{{cns}}} .suloea-stop.principal8 {
+    top: 30px;
+    left: 103px;
+}
+
+.suloea{{{cns}}} .suloea-stop.flute8 {
+    top: 30px;
+    left: 176px;
+}
+
+.suloea{{{cns}}} .suloea-stop.principal4 {
+    top: 30px;
+    left: 249px;
+}
+
+.suloea{{{cns}}} .suloea-stop.flute4 {
+    top: 30px;
+    left: 322px;
+}
+
+.suloea{{{cns}}} .suloea-stop.flute2 {
+    top: 30px;
+    left: 395px;
+}
+
+.suloea{{{cns}}} .suloea-stop.octave2 {
+    top: 30px;
+    left: 468px;
+}
+
+.suloea{{{cns}}} .suloea-stop.octave1 {
+    top: 30px;
+    left: 541px;
+}
+
+.suloea{{{cns}}} .suloea-stop.quinte {
+    top: 30px;
+    left: 614px;
+}
+
+.suloea{{{cns}}} .suloea-stop.tibia8 {
+    top: 30px;
+    left: 687px;
+}
+
+.suloea{{{cns}}} .suloea-stop.celesta {
+    top: 30px;
+    left: 760px;
+}
+
+.suloea{{{cns}}} .suloea-stop.cymbal {
+    top: 30px;
+    left: 833px;
+}
+
+.suloea{{{cns}}} .suloea-stop.mixture {
+    top: 30px;
+    left: 906px;
+}
+
+.suloea{{{cns}}} .suloea-stop.trumpet {
+    top: 30px;
+    left: 979px;
+}

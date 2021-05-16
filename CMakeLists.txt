@@ -59,10 +59,16 @@ set_target_properties (${LV2PLUGIN_PRJ_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY
 file (MAKE_DIRECTORY ${PROJECT_BINARY_DIR})
 configure_file (lv2/manifest.ttl.in ${PROJECT_BINARY_DIR}/manifest.ttl)
 configure_file (lv2/${PROJECT_NAME}.ttl.in ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.ttl)
+configure_file (lv2/modgui.ttl.in ${PROJECT_BINARY_DIR}/modgui.ttl)
 add_custom_command(TARGET ${LV2PLUGIN_PRJ_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${PROJECT_SOURCE_DIR}/third_party/stops-0.3.0"
         "${PROJECT_BINARY_DIR}/stops"
+)
+add_custom_command(TARGET ${LV2PLUGIN_PRJ_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${PROJECT_SOURCE_DIR}/lv2/modgui"
+        "${PROJECT_BINARY_DIR}/modgui"
 )
 
 ### Aeolus
