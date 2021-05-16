@@ -1,13 +1,17 @@
 /*
-  Toccata LV2 plugin
+  SPDX-License-Identifier: GPL-3.0-only
+  
+  Suolea LV2 plugin
 
-  Copyright 2020, Paul Ferrand <paul@ferrand.cc>
+  Copyright 2021, Paul Ferrand <paul@ferrand.cc>
+
+  This file is licensed under the GNU General Public License version 3.
+  For a full text of the license, see LICENSE.md.
 
   This file was based on skeleton and example code from the LV2 plugin
   distribution available at http://lv2plug.in/
 
-  The LV2 sample plugins have the following copyright and notice, which are
-  extended to the current work:
+  The LV2 sample plugins have the following copyright and notice:
   Copyright 2011-2016 David Robillard <d@drobilla.net>
   Copyright 2011 Gabriel M. Beddingfield <gabriel@teuton.org>
   Copyright 2011 James Morris <jwm.art.net@gmail.com>
