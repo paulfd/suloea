@@ -2,7 +2,30 @@
     <div mod-role="drag-handle" class="mod-drag-handle"></div>
     <div class="mod-light on" mod-role="bypass-light"></div>
     <div class="mod-footswitch" mod-role="bypass"></div>
-    <div class="suloea-knob suloea-knob-volume" mod-role="input-control-port" mod-port-symbol="volume" title="Volume"></div>
+    <div class="suloea-knob suloea-knob-volume" mod-role="input-control-port" mod-port-symbol="volume">Volume</div>
+    <div class="suloea-knob suloea-knob-position" mod-role="input-control-port" mod-port-symbol="position">Position</div>
+    <div class="suloea-knob suloea-knob-time" mod-role="input-control-port" mod-port-symbol="reverb_time">Time</div>
+    <div class="suloea-knob suloea-knob-delay" mod-role="input-control-port" mod-port-symbol="reverb_delay">Delay</div>
+    <!-- <div class="suloea-knob suloea-knob-time" mod-role="input-control-port" mod-port-symbol="time">Position</div> -->
+    <div class="suloea-knob suloea-knob-frequency" mod-role="input-control-port" mod-port-symbol="frequency">
+        Frequency
+        <span class="suloea-knob-frequency-minimum" mod-role="input-control-minimum" mod-port-symbol="frequency"></span>
+        <span class="suloea-knob-frequency-maximum" mod-role="input-control-maximum" mod-port-symbol="frequency"></span>
+        <span class="suloea-knob-frequency-value" mod-role="input-control-value" mod-port-symbol="frequency"></span>
+    </div>
+    <select class="suloea-temperament" mod-role="input-control-port" mod-port-symbol="temperament" mod-widget="select">
+        <option value="0">Pythagorean</option>
+        <option value="1">Meantone 1/4</option>
+        <option value="2">Werckmeister III</option>
+        <option value="3">Kirnberger III</option>
+        <option value="4">Well Tempered</option>
+        <option value="5">Equally Tempered</option>
+        <option value="6">Vogel/Ahrend</option>
+        <option value="7">Vallotti</option>
+        <option value="8">Kellner</option>
+        <option value="9">Lehman</option>
+        <option value="10">Pure C/F/G</option>
+    </select>
     <div class="suloea-stop bourdon16 off" mod-widget="switch" mod-role="input-control-port" mod-port-symbol="bourdon16">Bourdon<br>16</div>
     <div class="suloea-stop principal8 off" mod-widget="switch" mod-role="input-control-port" mod-port-symbol="principal8">Principal<br>16</div>
     <div class="suloea-stop flute8 active" mod-widget="switch" mod-role="input-control-port" mod-port-symbol="flute8">Flute<br>8</div>
@@ -15,7 +38,7 @@
     <div class="suloea-stop tibia8 off" mod-widget="switch" mod-role="input-control-port" mod-port-symbol="tibia8">Tibia<br>8</div>
     <div class="suloea-stop celesta off" mod-widget="switch" mod-role="input-control-port" mod-port-symbol="celesta">Celesta</div>
     <div class="suloea-stop cymbal off" mod-widget="switch" mod-role="input-control-port" mod-port-symbol="cymbal">Cymbal</div>
-    <div class="suloea-stop mixture off" mod-widget="switch" mod-role="input-control-port" mod-port-symbol="mixture">Micture<br>VI</div>
+    <div class="suloea-stop mixture off" mod-widget="switch" mod-role="input-control-port" mod-port-symbol="mixture">Mixture<br>VI</div>
     <div class="suloea-stop trumpet off" mod-widget="switch" mod-role="input-control-port" mod-port-symbol="trumpet">Trumpet</div>
     <div class="mod-pedal-input">
         <div class="mod-input" title="Midi input" mod-role="input-midi-port" mod-port-symbol="in"></div>

@@ -2,7 +2,10 @@
     background-image: url(/resources/background.png{{{ns}}});
     position: absolute;
     width: 1076px;
-    height: 390px;
+    height: 394px;
+    font-family: "Arial", sans-serif;
+    font-size: 18px;
+    font-weight: bold;
 }
 
 .suloea{{{cns}}} .mod-light {
@@ -11,8 +14,8 @@
     overflow: hidden;
     height:32px;
     width:32px;
-    bottom: 100px;
-    right: 50px;
+    bottom: 105px;
+    right: 52px;
     margin-top: 15px;
     position: absolute;
 }
@@ -30,8 +33,8 @@
     background-position:bottom center;
     background-repeat:no-repeat;
     background-size:auto 132px;
-    right: 30px;
-    bottom: 30px;
+    right: 35px;
+    bottom: 35px;
     cursor:pointer;
     height:66px;
     width: 66px;
@@ -45,15 +48,64 @@
 
 .suloea{{{cns}}} .suloea-knob {
     background-image: url(/resources/knob_70_black_sprites.png{{{ns}}});
+    background-repeat: no-repeat;
     height: 100px;
     position: absolute;
     width: 100px;
     z-index: 40;
+    padding-top: 100px;
+    text-align: center;
+    align-items: center;
+    color: black;
 }
 
 .suloea{{{cns}}} .suloea-knob.suloea-knob-volume {
-    bottom: 100px;
-    left: 697px;
+    bottom: 70px;
+    left: 830px;
+}
+
+.suloea{{{cns}}} .suloea-knob.suloea-knob-position {
+    bottom: 70px;
+    left: 720px;
+}
+
+.suloea{{{cns}}} .suloea-knob.suloea-knob-time {
+    bottom: 70px;
+    left: 380px;
+}
+
+.suloea{{{cns}}} .suloea-knob.suloea-knob-delay {
+    bottom: 70px;
+    left: 500px;
+}
+
+.suloea{{{cns}}} .suloea-knob.suloea-knob-frequency {
+    bottom: 70px;
+    left: 235px;
+}
+
+.suloea{{{cns}}} .suloea-knob-frequency-minimum {
+    position: absolute;
+    font-weight: normal;
+    font-size: 14px;
+    top: 80px;
+    left: -12px;
+}
+
+.suloea{{{cns}}} .suloea-knob-frequency-maximum {
+    position: absolute;
+    font-weight: normal;
+    font-size: 14px;
+    top: 80px;
+    left: 85px;
+}
+
+.suloea{{{cns}}} .suloea-knob-frequency-value {
+    position: absolute;
+    font-weight: normal;
+    font-size: 14px;
+    top: -15px;
+    left: 28px;
 }
 
 .suloea{{{cns}}} .suloea-stop {
@@ -69,6 +121,7 @@
     justify-content: center;
     align-items: center;
     text-align: center;
+    font-size: 16px;
 }
 
 .suloea{{{cns}}} .suloea-stop.off {
@@ -77,70 +130,77 @@
 
 .suloea{{{cns}}} .suloea-stop.bourdon16 {
     top: 30px;
-    left: 30px;
+    left: 25px;
 }
 
 .suloea{{{cns}}} .suloea-stop.principal8 {
     top: 30px;
-    left: 103px;
+    left: 98px;
 }
 
 .suloea{{{cns}}} .suloea-stop.flute8 {
     top: 30px;
-    left: 176px;
+    left: 171px;
 }
 
 .suloea{{{cns}}} .suloea-stop.principal4 {
     top: 30px;
-    left: 249px;
+    left: 244px;
 }
 
 .suloea{{{cns}}} .suloea-stop.flute4 {
     top: 30px;
-    left: 322px;
+    left: 317px;
 }
 
 .suloea{{{cns}}} .suloea-stop.flute2 {
     top: 30px;
-    left: 395px;
+    left: 390px;
 }
 
 .suloea{{{cns}}} .suloea-stop.octave2 {
     top: 30px;
-    left: 468px;
+    left: 463px;
 }
 
 .suloea{{{cns}}} .suloea-stop.octave1 {
     top: 30px;
-    left: 541px;
+    left: 536px;
 }
 
 .suloea{{{cns}}} .suloea-stop.quinte {
     top: 30px;
-    left: 614px;
+    left: 609px;
 }
 
 .suloea{{{cns}}} .suloea-stop.tibia8 {
     top: 30px;
-    left: 687px;
+    left: 682px;
 }
 
 .suloea{{{cns}}} .suloea-stop.celesta {
     top: 30px;
-    left: 760px;
+    left: 755px;
 }
 
 .suloea{{{cns}}} .suloea-stop.cymbal {
     top: 30px;
-    left: 833px;
+    left: 828px;
 }
 
 .suloea{{{cns}}} .suloea-stop.mixture {
     top: 30px;
-    left: 906px;
+    left: 901px;
 }
 
 .suloea{{{cns}}} .suloea-stop.trumpet {
     top: 30px;
-    left: 979px;
+    left: 975px;
+}
+
+.suloea{{{cns}}} .suloea-temperament {
+    position: absolute ;
+    bottom: 130px;
+    left: 40px;
+    z-index: 40;
 }
