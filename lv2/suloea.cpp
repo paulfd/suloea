@@ -1,7 +1,7 @@
 /*
   SPDX-License-Identifier: GPL-3.0-only
   
-  Suolea LV2 plugin
+  Suolea LV2 plugin wrapper
 
   Copyright 2021, Paul Ferrand <paul@ferrand.cc>
 
