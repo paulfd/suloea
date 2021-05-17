@@ -641,6 +641,22 @@ run(LV2_Handle instance, uint32_t sample_count)
     float* out [2] { self->output_buffers[0], self->output_buffers[1] };
     int64_t k = 0;
 
+    if (self->retuning) {
+        // Process midi event blanks
+        while (!lv2_atom_sequence_is_end(&seq->body, seq->atom.size, ev)) {
+            if (ev->body.type == self->midi_event_uri)
+                self->process_midi_event(ev);
+
+            ev = lv2_atom_sequence_next(ev);
+        }
+
+        // Clear buffers
+        memset(self->output_buffers[0], 0, sample_count * sizeof(float));
+        memset(self->output_buffers[1], 0, sample_count * sizeof(float));
+
+        return;
+    }
+
     while (k < sample_count)
     {
         int64_t left_to_read = PERIOD - self->read_idx;
