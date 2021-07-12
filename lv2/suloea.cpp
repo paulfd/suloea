@@ -169,6 +169,7 @@ struct SuloeaPlugin
     void update_parameters();
     void process_midi_event(const LV2_Atom_Event* ev);
     void map_required_uris();
+    void clear_internal_buffers();
     void process_one_period();
     void update_gain();
     void update_reverb_delay();
@@ -394,6 +395,7 @@ void SuloeaPlugin::update_reverb_time()
 
 void SuloeaPlugin::init()
 {
+    clear_internal_buffers();
     update_gain();
     update_reverb_amount();
     update_reverb_delay();
@@ -517,13 +519,18 @@ void SuloeaPlugin::process_midi_event(const LV2_Atom_Event* ev)
     }
 }
 
-void SuloeaPlugin::process_one_period()
+void SuloeaPlugin::clear_internal_buffers()
 {
     memset(W, 0, PERIOD * sizeof(float));
     memset(X, 0, PERIOD * sizeof(float));
     memset(Y, 0, PERIOD * sizeof(float));
     memset(Z, 0, PERIOD * sizeof(float));
     memset(R, 0, PERIOD * sizeof(float));
+}
+
+void SuloeaPlugin::process_one_period()
+{
+    clear_internal_buffers();
 
     if (!retuning)
         division->process();
@@ -687,7 +694,7 @@ run(LV2_Handle instance, uint32_t sample_count)
         }
 
         k += chunk_size;
-    } 
+    }
 }
 
 // This runs in a lower priority thread
