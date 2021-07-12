@@ -34,7 +34,7 @@
   lv2:name "Registration".
 
 <@LV2PLUGIN_URI@>
-	a doap:Project, lv2:Plugin ;
+	a doap:Project, lv2:Plugin, lv2:InstrumentPlugin ;
 	doap:name "@LV2PLUGIN_NAME@" ;
 	doap:license <https://spdx.org/licenses/@LV2PLUGIN_SPDX_LICENSE_ID@> ;
 	doap:maintainer [
