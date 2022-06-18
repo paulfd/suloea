@@ -71,6 +71,12 @@ add_custom_command(TARGET ${LV2PLUGIN_PRJ_NAME} POST_BUILD
         "${PROJECT_BINARY_DIR}/modgui"
 )
 
+# Installation
+if (NOT MSVC)
+    install (DIRECTORY ${PROJECT_BINARY_DIR} DESTINATION ${LV2PLUGIN_INSTALL_DIR}
+        COMPONENT "lv2")
+endif()
+
 ### Aeolus
 
 # find_package(Freetype REQUIRED)
