@@ -611,7 +611,7 @@ static void
 cleanup(LV2_Handle instance)
 {
     SuloeaPlugin* self = (SuloeaPlugin*)instance;
-    free(self);
+    delete self;
 }
 
 static void
